@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #5f7161;
+  --primary-dark: #4d5d4f;
+  --secondary: #e7ab79;
+  --background: #ffffff;
+  --surface: #ffffff;
+  --text-main: #4a554b;
+  --text-dim: #8b968c;
+  --border: #f1f1ee;
+  --radius: 6px; /* Slightly more rounding for better UI */
+  --sidebar-width: 260px; /* Increased from 200 */
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-main);
+  min-height: 100vh;
+  font-size: 0.8rem; /* Slightly larger than before for readability */
+}
+
+@layer components {
+  .serenity-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+  }
+
+  .serenity-card:hover {
+    border-color: #e7ab79;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  }
+
+  .nature-gradient {
+    background: #5f7161;
+  }
+
+  .peach-gradient {
+    background: #e7ab79;
+  }
+
+  .nav-active-serenity {
+    background: #f8f9f8;
+    color: var(--primary);
+    font-weight: 700;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: #e2e4dd;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+@layer utilities {
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: 0.3; }
+  }
+  .animate-pulse-slow {
+    animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes bounce-slow {
+    0%, 100% { transform: translateY(-3%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+    50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+  }
+  .animate-bounce-slow {
+    animation: bounce-slow 3s infinite;
+  }
+}
