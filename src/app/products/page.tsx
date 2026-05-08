@@ -22,23 +22,25 @@ import { AdminPagination } from '@/components/admin/AdminPagination';
 
 const ProductRow = ({ p, handleDelete }: any) => {
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
-  const v = p.variants?.[selectedVariantIdx] || { name: 'Default', unit: '', price: p.price, stock: p.stock };
+  const v = p.variants?.[selectedVariantIdx] || { name: 'Standard', unit: '', sellingPrice: p.price || 0, stock: p.stock || 0 };
 
   return (
     <tr className="group transition-all duration-300 hover:bg-white/80 relative">
       <td className="px-6 py-3 text-left relative">
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#e7ab79] scale-y-0 group-hover:scale-y-100 transition-transform origin-top duration-300" />
+        <div className={`absolute left-0 top-0 bottom-0 w-1 ${p.status === 'Inactive' ? 'bg-red-400' : 'bg-[#e7ab79]'} scale-y-0 group-hover:scale-y-100 transition-transform origin-top duration-300`} />
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-full overflow-hidden border border-[#f1f1ee] bg-white flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-500">
-            <img src={p.images?.[0] || 'https://via.placeholder.com/150'} className="w-full h-full object-contain" />
+            <img src={p.images?.[0] || 'https://res.cloudinary.com/dwkom79iv/image/upload/v1715096530/akod-food/placeholder.png'} className="w-full h-full object-contain" />
           </div>
           <div className="space-y-0.5">
-            <p className="text-[11px] font-black text-[#4a554b] leading-tight group-hover:text-[#5f7161] transition-colors uppercase italic">{p.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-black text-[#4a554b] leading-tight group-hover:text-[#5f7161] transition-colors uppercase italic">{p.name}</p>
+              <span className={`px-2 py-0.5 rounded-full text-[6px] font-black uppercase tracking-widest ${p.status === 'Inactive' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                {p.status || 'Active'}
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <p className="text-[8px] text-[#8b968c] font-black uppercase tracking-tighter">REF: #{p._id?.slice(-6).toUpperCase()}</p>
-              {p.dietaryType && (
-                <span className={`w-1.5 h-1.5 rounded-full ${p.dietaryType === 'Veg' ? 'bg-green-500' : 'bg-red-500'} shadow-sm`} />
-              )}
             </div>
           </div>
         </div>
@@ -67,8 +69,8 @@ const ProductRow = ({ p, handleDelete }: any) => {
       </td>
       <td className="px-6 py-3 text-center">
         <div className="flex flex-col">
-          <span className="text-[11px] font-black text-[#5f7161]">₹{v.price?.toLocaleString()}</span>
-          <span className="text-[7px] font-black text-[#adb5bd] uppercase tracking-widest">Active Value</span>
+          <span className="text-[11px] font-black text-[#5f7161]">₹{v.sellingPrice?.toLocaleString() || '0'}</span>
+          <span className="text-[7px] font-black text-[#adb5bd] uppercase tracking-widest">Active Price</span>
         </div>
       </td>
       <td className="px-6 py-3 text-center">
@@ -115,7 +117,7 @@ const ProductRow = ({ p, handleDelete }: any) => {
 
 const ProductCard = ({ p, handleDelete }: any) => {
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
-  const v = p.variants?.[selectedVariantIdx] || { name: 'Default', unit: '', price: p.price, stock: p.stock };
+  const v = p.variants?.[selectedVariantIdx] || { name: 'Standard', unit: '', sellingPrice: p.price || 0, stock: p.stock || 0 };
 
   return (
     <div className="group relative bg-white border border-[#f1f1ee] rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 flex flex-col">
@@ -133,14 +135,19 @@ const ProductCard = ({ p, handleDelete }: any) => {
       </div>
 
       <div className="aspect-square relative overflow-hidden bg-[#fcfcfb] flex items-center justify-center p-6">
-        <img src={p.images?.[0] || 'https://via.placeholder.com/400'} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110" />
+        <img src={p.images?.[0] || 'https://res.cloudinary.com/dwkom79iv/image/upload/v1715096530/akod-food/placeholder.png'} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         
-        <div className="absolute bottom-3 left-3">
+        <div className="absolute bottom-3 left-3 flex flex-col gap-1.5">
           <div className={`px-3 py-1 rounded-full text-[7px] font-black uppercase tracking-widest text-white shadow-lg ${
             Number(v.stock) === 0 ? 'bg-red-500' : 'bg-[#5f7161]'
           }`}>
             {Number(v.stock) === 0 ? 'Depleted' : 'Operational'}
+          </div>
+          <div className={`px-3 py-1 rounded-full text-[7px] font-black uppercase tracking-widest text-white shadow-lg ${
+            p.status === 'Inactive' ? 'bg-red-400' : 'bg-[#e7ab79]'
+          }`}>
+            {p.status || 'Active'}
           </div>
         </div>
       </div>
@@ -173,8 +180,8 @@ const ProductCard = ({ p, handleDelete }: any) => {
               <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5f7161] pointer-events-none" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-black text-[#5f7161]">₹{v.price?.toLocaleString()}</span>
-              <span className="text-[7px] font-black text-[#adb5bd] uppercase tracking-widest">Valuation</span>
+              <span className="text-sm font-black text-[#5f7161]">₹{v.sellingPrice?.toLocaleString() || '0'}</span>
+              <span className="text-[7px] font-black text-[#adb5bd] uppercase tracking-widest">Price</span>
             </div>
           </div>
           <div className="flex flex-col items-end">

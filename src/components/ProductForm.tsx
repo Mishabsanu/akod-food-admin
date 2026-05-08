@@ -5,7 +5,7 @@ import { useFormik, FormikProvider, FieldArray } from 'formik';
 import * as Yup from 'yup';
 import { 
   Upload, X, Loader2, ArrowLeft, Plus, Trash2, ShieldCheck, 
-  Package, Layers, Check, ChevronLeft, ChevronRight, Image as ImageIcon,
+  Package, Layers, Check, ChevronLeft, ChevronRight, ChevronDown, Image as ImageIcon,
   Tag, Info, DollarSign, Calendar, Activity, Database, AlertCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,7 @@ const validationSchema = Yup.object({
   name: Yup.string().required('Product Name is required').min(3, 'Name too short'),
   category: Yup.string().required('Category is required'),
   shortDescription: Yup.string().required('Short description is required').max(200, 'Keep it short'),
+  status: Yup.string().oneOf(['Active', 'Inactive']),
   variants: Yup.array().of(
     Yup.object({
       name: Yup.string().required('Size is required'),
@@ -48,6 +49,7 @@ const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormPr
       shelfLife: '',
       manufacturingDate: '',
       expiryDate: '',
+      status: 'Active',
       variants: [{ name: '', unit: 'g', sellingPrice: '', stock: '0' }]
     },
     validationSchema,
@@ -61,11 +63,13 @@ const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormPr
       selectedFiles.forEach(file => data.append('images', file));
 
       try {
-        await onSubmit(data);
+        const response = await onSubmit(data);
         toast.success('Product saved successfully');
         router.push('/products');
-      } catch (error) {
-        toast.error('Failed to save product');
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.message || 'Failed to save product. Please check all fields.';
+        toast.error(errorMessage);
+        console.error('Save Error:', error);
       } finally {
         setLoading(false);
       }
@@ -314,9 +318,26 @@ const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormPr
 
             {/* 4. Safety & Ingredients */}
             <div className="space-y-8 relative z-10 pt-4">
-              <div className="flex items-center gap-2 border-b border-[#f1f1ee] pb-4">
-                <ShieldCheck size={14} className="text-[#e7ab79]" />
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a554b]">Safety & Ingredients</h2>
+              <div className="flex items-center justify-between border-b border-[#f1f1ee] pb-4">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={14} className="text-[#e7ab79]" />
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a554b]">Safety & Ingredients</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest">Product Status:</label>
+                  <div className="relative">
+                    <select 
+                      name="status"
+                      className="bg-[#fcfcfb] border border-[#f1f1ee] rounded-full px-5 py-1.5 text-[9px] font-black text-[#5f7161] outline-none appearance-none cursor-pointer hover:border-[#5f7161] transition-all shadow-sm pr-10"
+                      value={formik.values.status}
+                      onChange={formik.handleChange}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                    <ChevronDown size={12} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5f7161] pointer-events-none" />
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div className="md:col-span-2 space-y-2">
