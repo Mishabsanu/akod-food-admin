@@ -53,6 +53,7 @@ export const adminApi = {
   // Orders
   getOrders: (params?: any) => api.get('/admin/orders', { params }),
   updateOrder: (id: string, status: string) => api.put(`/admin/orders/${id}`, { status }),
+  updateShipment: (id: string, data: any) => api.patch(`/admin/orders/${id}/shipment`, data),
   deleteOrder: (id: string) => api.delete(`/admin/orders/${id}`),
 
   // Users

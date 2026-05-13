@@ -64,8 +64,15 @@ const ProductModal = ({ isOpen, onClose, onSave, product, categories }: ProductM
   };
 
   const removeImage = (index: number) => {
-    setPreviews(prev => prev.filter((_, i) => i !== index));
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => {
+      const newPreviews = prev.filter((_, i) => i !== index);
+      return newPreviews;
+    });
+    
+    const existingCount = previews.length - selectedFiles.length;
+    if (index >= existingCount) {
+      setSelectedFiles(prev => prev.filter((_, i) => i !== (index - existingCount)));
+    }
   };
 
   const addIngredient = () => setFormData(prev => ({ ...prev, ingredients: [...prev.ingredients, ''] }));
@@ -92,6 +99,10 @@ const ProductModal = ({ isOpen, onClose, onSave, product, categories }: ProductM
         data.append(key, value.toString());
       }
     });
+
+    // Identify existing images (strings) vs new files (blobs)
+    const existingImages = previews.filter(p => !p.startsWith('blob:'));
+    data.append('existingImages', JSON.stringify(existingImages));
 
     selectedFiles.forEach(file => {
       data.append('images', file);

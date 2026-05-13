@@ -300,7 +300,7 @@ const Products = () => {
 
       <AdminStats stats={[
         { label: 'Inventory', value: totalItems, icon: Package2, color: 'bg-[#5f7161]' },
-        { label: 'Revenue Pool', value: `₹${(products.reduce((acc, p) => acc + (p.price * (p.stock || 0)), 0)).toLocaleString()}`, icon: Scale, color: 'bg-[#8ba190]' },
+        { label: 'Revenue Pool', value: `₹${(products.reduce((acc, p) => acc + (p.variants?.reduce((vAcc: number, v: any) => vAcc + (Number(v.sellingPrice || 0) * Number(v.stock || 0)), 0) || 0), 0)).toLocaleString()}`, icon: Scale, color: 'bg-[#8ba190]' },
         { label: 'Avg Rating', value: '5.0', icon: Star, color: 'bg-[#d49a68]' },
         { label: 'Depleted', value: products.filter(p => p.stock === 0).length, icon: Activity, color: 'bg-[#4a554b]' },
       ]} />

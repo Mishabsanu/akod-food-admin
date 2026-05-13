@@ -57,9 +57,14 @@ const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormPr
       setLoading(true);
       const data = new FormData();
       Object.keys(values).forEach(key => {
-        if (key !== 'variants') data.append(key, (values as any)[key]);
+        if (key !== 'variants' && key !== 'images') data.append(key, (values as any)[key]);
       });
       data.append('variants', JSON.stringify(values.variants));
+      
+      // Identify existing images (strings) vs new files (blobs)
+      const existingImages = previews.filter(p => !p.startsWith('blob:'));
+      data.append('existingImages', JSON.stringify(existingImages));
+      
       selectedFiles.forEach(file => data.append('images', file));
 
       try {
