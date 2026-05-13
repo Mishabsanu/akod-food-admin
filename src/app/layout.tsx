@@ -24,10 +24,11 @@ export default function RootLayout({
   useEffect(() => {
     // Set page title dynamically
     document.title = "AKOD FOOD | Admin Dashboard";
-    // Set favicon
-    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
-    (link as any).rel = 'icon';
-    (link as any).href = '/logo.png';
+    
+    // Set favicon and ensure it updates
+    const link: any = document.querySelector("link[rel~='icon']") || document.createElement('link');
+    link.rel = 'icon';
+    link.href = '/logo.png?v=1'; // Add versioning to bust cache
     document.getElementsByTagName('head')[0].appendChild(link);
   }, []);
 
