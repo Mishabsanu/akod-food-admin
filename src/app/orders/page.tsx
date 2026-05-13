@@ -190,7 +190,7 @@ const Orders = () => {
         secondTitle="Ledger"
         subtitle="Real-time Logistics & Audit Management"
         actionLabel="Refresh Logs"
-        onClickAction={fetchOrders}
+        onClick={fetchOrders}
         actionIcon={TrendingUp}
       />
 

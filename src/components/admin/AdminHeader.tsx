@@ -9,6 +9,7 @@ interface AdminHeaderProps {
   subtitle: string;
   actionLabel?: string;
   actionHref?: string;
+  onClick?: () => void;
   actionIcon?: LucideIcon;
   children?: React.ReactNode;
   className?: string;
@@ -20,10 +21,13 @@ export const AdminHeader = ({
   subtitle, 
   actionLabel, 
   actionHref, 
+  onClick,
   actionIcon: Icon,
   children,
   className = ""
 }: AdminHeaderProps) => {
+  const buttonClass = "bg-[#5f7161] text-white px-8 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-[#4d5d4f] hover:scale-105 transition-all shadow-xl shadow-[#5f7161]/20 flex items-center gap-3 active:scale-95";
+
   return (
     <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-6 ${className}`}>
       <div className="space-y-0.5">
@@ -37,12 +41,14 @@ export const AdminHeader = ({
       <div className="flex items-center gap-4">
         {children}
         {actionLabel && actionHref && (
-          <Link 
-            href={actionHref} 
-            className="bg-[#5f7161] text-white px-8 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-[#4d5d4f] hover:scale-105 transition-all shadow-xl shadow-[#5f7161]/20 flex items-center gap-3 active:scale-95"
-          >
+          <Link href={actionHref} className={buttonClass}>
             {Icon && <Icon size={16} />} {actionLabel}
           </Link>
+        )}
+        {actionLabel && onClick && !actionHref && (
+          <button onClick={onClick} className={buttonClass}>
+            {Icon && <Icon size={16} />} {actionLabel}
+          </button>
         )}
       </div>
     </div>
