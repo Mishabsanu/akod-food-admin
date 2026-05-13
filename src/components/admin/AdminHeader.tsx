@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { LucideIcon } from 'lucide-react';
 
 interface AdminHeaderProps {
@@ -30,13 +31,18 @@ export const AdminHeader = ({
 
   return (
     <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-6 ${className}`}>
-      <div className="space-y-0.5">
-        <h1 className="text-2xl font-black tracking-tighter uppercase italic">
-          <span className="text-[#4a554b]">{title}</span> <span className="text-[#e7ab79]">{secondTitle}</span>
-        </h1>
-        <p className="text-[8px] font-black uppercase tracking-[0.4em]">
-          <span className="text-[#8b968c]">{subtitle}</span> <span className="text-[#e7ab79]">Admin Panel</span>
-        </p>
+      <div className="flex items-center gap-4">
+        <div className="bg-white p-1.5 rounded-lg shadow-sm border border-gray-100 hidden sm:block">
+          <Image src="/logo.png" alt="AKOD" width={48} height={48} className="w-12 h-12 object-contain" />
+        </div>
+        <div className="space-y-0.5">
+          <h1 className="text-2xl font-black tracking-tighter uppercase italic">
+            <span className="text-[#4a554b]">{title}</span> <span className="text-[#e7ab79]">{secondTitle}</span>
+          </h1>
+          <p className="text-[8px] font-black uppercase tracking-[0.4em]">
+            <span className="text-[#8b968c]">{subtitle}</span> <span className="text-[#e7ab79]">Admin Panel</span>
+          </p>
+        </div>
       </div>
       <div className="flex items-center gap-4">
         {children}
