@@ -5,13 +5,14 @@ import { sendSuccess, sendError } from '@/lib/response';
 import { getAdminFromRequest } from '@/lib/auth';
 import { uploadFileToCloudinary } from '@/lib/cloudinary';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
-    const category = await Category.findById(params.id).lean();
+    const { id } = await params;
+    const category = await Category.findById(id).lean();
     if (!category) return sendError('Classification node not found', 404);
 
     return sendSuccess(category, 'Classification node retrieved');
@@ -20,12 +21,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
+    const { id } = await params;
     const contentType = req.headers.get('content-type') || '';
     const updateData: any = {};
 
@@ -50,7 +52,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       Object.assign(updateData, body);
     }
 
-    const category = await Category.findByIdAndUpdate(params.id, updateData, { new: true }).lean();
+    const category = await Category.findByIdAndUpdate(id, updateData, { new: true }).lean();
     if (!category) return sendError('Category not found', 404);
 
     return sendSuccess(category, 'Classification node updated successfully.');
@@ -59,13 +61,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
-    const category = await Category.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const category = await Category.findByIdAndDelete(id);
     if (!category) return sendError('Category not found', 404);
 
     return sendSuccess(null, 'Classification node terminated');

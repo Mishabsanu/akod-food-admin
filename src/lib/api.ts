@@ -36,6 +36,9 @@ export const authApi = {
 };
 
 export const adminApi = {
+  // Dashboard Analytics
+  getDashboard: () => api.get('/admin/dashboard'),
+
   // Categories
   getCategories: (params?: any) => api.get('/admin/categories', { params }),
   getCategory: (id: string) => api.get(`/admin/categories/${id}`),

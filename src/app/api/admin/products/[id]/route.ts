@@ -6,13 +6,14 @@ import { sendSuccess, sendError } from '@/lib/response';
 import { getAdminFromRequest } from '@/lib/auth';
 import { uploadFileToCloudinary } from '@/lib/cloudinary';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
-    const product = await Product.findById(params.id).populate('category').lean();
+    const { id } = await params;
+    const product = await Product.findById(id).populate('category').lean();
     if (!product) return sendError('Product not found', 404);
 
     return sendSuccess(product, 'Product details established');
@@ -21,12 +22,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
+    const { id } = await params;
     const contentType = req.headers.get('content-type') || '';
     const updateData: any = {};
     const newUploadedImages: string[] = [];
@@ -75,7 +77,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       finalImages = Array.isArray(updateData.existingImages) ? updateData.existingImages : [];
       delete updateData.existingImages;
     } else {
-      const currentProduct = await Product.findById(params.id).lean();
+      const currentProduct = await Product.findById(id).lean();
       finalImages = currentProduct?.images || [];
     }
 
@@ -87,7 +89,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       updateData.images = finalImages;
     }
 
-    const product = await Product.findByIdAndUpdate(params.id, updateData, { new: true }).lean();
+    const product = await Product.findByIdAndUpdate(id, updateData, { new: true }).lean();
     if (!product) return sendError('Product not found', 404);
 
     return sendSuccess(product, 'Product updated successfully.');
@@ -96,13 +98,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
-    const product = await Product.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const product = await Product.findByIdAndDelete(id);
     if (!product) return sendError('Product not found', 404);
 
     return sendSuccess(null, 'Inventory node terminated');

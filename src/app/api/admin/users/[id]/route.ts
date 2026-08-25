@@ -4,13 +4,14 @@ import User from '@/models/User';
 import { sendSuccess, sendError } from '@/lib/response';
 import { getAdminFromRequest } from '@/lib/auth';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
-    const user = await User.findById(params.id).select('-password -refreshToken').lean();
+    const { id } = await params;
+    const user = await User.findById(id).select('-password -refreshToken').lean();
     if (!user) return sendError('User not found', 404);
 
     return sendSuccess(user, 'User data retrieved');
@@ -19,14 +20,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
+    const { id } = await params;
     const { name, email, role, status, password } = await req.json();
-    const user = await User.findById(params.id);
+    const user = await User.findById(id);
     if (!user) return sendError('User not found', 404);
 
     if (name) user.name = name;
@@ -42,13 +44,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
-    const user = await User.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const user = await User.findByIdAndDelete(id);
     if (!user) return sendError('Authority node not found', 404);
 
     return sendSuccess(null, 'Authority node terminated');

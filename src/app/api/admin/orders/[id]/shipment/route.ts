@@ -4,14 +4,15 @@ import Order from '@/models/Order';
 import { sendSuccess, sendError } from '@/lib/response';
 import { getAdminFromRequest } from '@/lib/auth';
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const admin = getAdminFromRequest(req);
     if (!admin) return sendError('Unauthorized', 401);
 
+    const { id } = await params;
     const { trackingId, courierName } = await req.json();
-    const order = await Order.findById(params.id);
+    const order = await Order.findById(id);
     if (!order) return sendError('Order not found', 404);
 
     order.shipment = {
