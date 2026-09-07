@@ -159,7 +159,7 @@ export const Sidebar = ({ user, isOpen = false, onClose }: SidebarProps) => {
           {/* Live Storefront Quick Link */}
           <div className="pt-2">
             <a
-              href="http://localhost:3000"
+              href={process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:3000"}
               target="_blank"
               rel="noreferrer"
               className="flex items-center justify-between p-2.5 text-xs text-slate-200 bg-[#17221b] hover:bg-[#1e2d24] rounded-md transition-all border border-[#233529] group shadow-2xs"

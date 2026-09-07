@@ -268,7 +268,7 @@ export const Header = ({ user, onOpenSidebar }: HeaderProps) => {
 
           {/* Live Storefront Status Link */}
           <a
-            href="http://localhost:3000"
+            href={process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:3000"}
             target="_blank"
             rel="noreferrer"
             title="Open Live Storefront"
@@ -453,7 +453,7 @@ export const Header = ({ user, onOpenSidebar }: HeaderProps) => {
                   </Link>
 
                   <a
-                    href="http://localhost:3000"
+                    href={process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:3000"}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded transition-colors"

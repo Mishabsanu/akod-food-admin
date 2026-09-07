@@ -146,52 +146,46 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Direct Inputs using admin-input-group for 0 overlap */}
+          {/* Clean Direct Inputs Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             
             <div className="space-y-1.5">
               <label className="admin-label">Email Address</label>
-              <div className="admin-input-group">
-                <div className="admin-input-group-icon">
-                  <Mail size={15} />
-                </div>
-                <input 
-                  required 
-                  type="email"
-                  placeholder="admin@akodfood.com"
-                  value={formData.email}
-                  onChange={e => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
+              <input 
+                required 
+                type="email"
+                className="admin-input"
+                placeholder="admin@akodfood.com"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+              />
             </div>
 
             <div className="space-y-1.5">
-              <label className="admin-label">Password</label>
-              <div className="admin-input-group">
-                <div className="admin-input-group-icon">
-                  <Lock size={15} />
-                </div>
-                <input 
-                  required 
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                />
+              <div className="flex items-center justify-between">
+                <label className="admin-label">Password</label>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="pr-3 pl-1 text-slate-400 hover:text-slate-700 transition-colors"
+                  className="text-[11px] font-bold text-[#546b5a] hover:underline cursor-pointer"
                 >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
+              <input 
+                required 
+                type={showPassword ? 'text' : 'password'}
+                className="admin-input"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+              />
             </div>
 
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full btn-primary py-2.5 text-xs font-bold mt-2 shadow-sm active:scale-[0.99] transition-all disabled:opacity-50"
+              className="w-full btn-primary py-2.5 text-xs font-bold mt-2 shadow-sm active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer"
             >
               {loading ? <Loader2 className="animate-spin" size={14} /> : (
                 <>

@@ -1,8 +1,33 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Order from '@/models/Order';
+import Customer from '@/models/Customer';
+import Product from '@/models/Product';
 import { sendSuccess, sendError } from '@/lib/response';
 import { getAdminFromRequest } from '@/lib/auth';
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await connectDB();
+    const admin = getAdminFromRequest(req);
+    if (!admin) return sendError('Unauthorized', 401);
+
+    const { id } = await params;
+    const order = await Order.findById(id)
+      .populate('customer', 'name email phone address')
+      .populate({
+        path: 'items.product',
+        select: 'name images price sku variants status'
+      })
+      .lean();
+
+    if (!order) return sendError('Order not found', 404);
+
+    return sendSuccess(order, 'Order details retrieved');
+  } catch (error: any) {
+    return sendError(error, 500);
+  }
+}
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

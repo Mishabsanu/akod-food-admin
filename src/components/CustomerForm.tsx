@@ -99,21 +99,18 @@ export const CustomerForm = ({ initialData, onSubmit, title }: CustomerFormProps
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <div className="space-y-1 md:col-span-2">
+          <div className="space-y-1">
             <label className="admin-label">
-              <span>Full Name</span>
+              <span>Customer Full Name</span>
               <span className="text-rose-500 font-bold">*</span>
             </label>
-            <div className="relative">
-              <input 
-                required
-                className="admin-input pl-8"
-                placeholder="e.g. Sarah Jenkins"
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-              />
-              <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
+            <input 
+              required
+              className="admin-input"
+              placeholder="e.g. Sarah Jenkins"
+              value={formData.name}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+            />
           </div>
 
           <div className="space-y-1">
@@ -121,17 +118,14 @@ export const CustomerForm = ({ initialData, onSubmit, title }: CustomerFormProps
               <span>Email Address</span>
               <span className="text-rose-500 font-bold">*</span>
             </label>
-            <div className="relative">
-              <input 
-                required 
-                type="email"
-                className="admin-input pl-8"
-                placeholder="sarah@example.com"
-                value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-              />
-              <Mail size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
+            <input 
+              required 
+              type="email"
+              className="admin-input"
+              placeholder="sarah@example.com"
+              value={formData.email}
+              onChange={e => setFormData({ ...formData, email: e.target.value })}
+            />
           </div>
 
           <div className="space-y-1">
@@ -139,32 +133,26 @@ export const CustomerForm = ({ initialData, onSubmit, title }: CustomerFormProps
               <span>Mobile Phone Number</span>
               <span className="text-rose-500 font-bold">*</span>
             </label>
-            <div className="relative">
-              <input 
-                required
-                className="admin-input pl-8 font-mono"
-                placeholder="+91 98765 43210"
-                value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-              />
-              <Phone size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
+            <input 
+              required
+              className="admin-input font-mono"
+              placeholder="+91 98765 43210"
+              value={formData.phone}
+              onChange={e => setFormData({ ...formData, phone: e.target.value })}
+            />
           </div>
 
           <div className="space-y-1 md:col-span-2">
             <label className="admin-label">
               <span>Default Delivery Address</span>
             </label>
-            <div className="relative">
-              <textarea 
-                rows={3}
-                className="admin-input pl-8 resize-none"
-                placeholder="Complete street address, apartment / unit, city, state, pincode..."
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-              />
-              <MapPin size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
-            </div>
+            <textarea 
+              rows={3}
+              className="admin-input resize-none"
+              placeholder="Complete street address, apartment / unit, city, state, pincode..."
+              value={formData.address}
+              onChange={e => setFormData({ ...formData, address: e.target.value })}
+            />
           </div>
         </div>
 

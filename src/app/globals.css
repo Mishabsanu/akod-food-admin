@@ -332,7 +332,7 @@ code, kbd, samp, pre, .font-mono {
   width: 100% !important;
   min-width: 0;
   box-sizing: border-box;
-  padding: 0.5rem 0.75rem;
+  padding: 0.55rem 0.85rem !important;
   font-size: 0.75rem;
   font-family: inherit;
   color: #1e293b;

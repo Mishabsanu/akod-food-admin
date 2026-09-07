@@ -119,17 +119,14 @@ export const UserForm = ({ initialData, onSubmit, title }: UserFormProps) => {
               <span>Full Name</span>
               <span className="text-rose-500 font-bold">*</span>
             </label>
-            <div className="relative">
-              <input 
-                name="name"
-                className="admin-input pl-8"
-                placeholder="e.g. Rahul Sharma"
-                value={formik.values.name}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-              />
-              <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
+            <input 
+              name="name"
+              className="admin-input"
+              placeholder="e.g. Rahul Sharma"
+              value={formik.values.name}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
             {formik.touched.name && formik.errors.name && (
               <p className="admin-error-text">
                 <AlertCircle size={12} /> {formik.errors.name}
@@ -143,18 +140,15 @@ export const UserForm = ({ initialData, onSubmit, title }: UserFormProps) => {
               <span>Email Address</span>
               <span className="text-rose-500 font-bold">*</span>
             </label>
-            <div className="relative">
-              <input 
-                name="email"
-                type="email"
-                className="admin-input pl-8"
-                placeholder="rahul@akodfood.com"
-                value={formik.values.email}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-              />
-              <Mail size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
+            <input 
+              name="email"
+              type="email"
+              className="admin-input"
+              placeholder="rahul@akodfood.com"
+              value={formik.values.email}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
             {formik.touched.email && formik.errors.email && (
               <p className="admin-error-text">
                 <AlertCircle size={12} /> {formik.errors.email}
@@ -204,29 +198,28 @@ export const UserForm = ({ initialData, onSubmit, title }: UserFormProps) => {
           {/* Password */}
           {!initialData && (
             <div className="space-y-1 md:col-span-2">
-              <label className="admin-label">
-                <span>Access Password</span>
-                <span className="text-rose-500 font-bold">*</span>
-              </label>
-              <div className="relative">
-                <input 
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  className="admin-input pl-8 pr-9"
-                  placeholder="Minimum 6 characters securely hashed"
-                  value={formik.values.password}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                />
-                <KeyRound size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div className="flex items-center justify-between">
+                <label className="admin-label">
+                  <span>Access Password</span>
+                  <span className="text-rose-500 font-bold">*</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="text-[11px] font-bold text-[#546b5a] hover:underline cursor-pointer"
                 >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
+              <input 
+                name="password"
+                type={showPassword ? "text" : "password"}
+                className="admin-input"
+                placeholder="Minimum 6 characters securely hashed"
+                value={formik.values.password}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
               {formik.touched.password && formik.errors.password && (
                 <p className="admin-error-text">
                   <AlertCircle size={12} /> {formik.errors.password}

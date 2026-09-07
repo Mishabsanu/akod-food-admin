@@ -440,18 +440,15 @@ export const ProductForm = ({ initialData, categories, onSubmit, title }: Produc
 
                             <div className="sm:col-span-3">
                               <label className="sm:hidden text-[10px] font-bold text-slate-500 block mb-1">Selling Price (₹)</label>
-                              <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
-                                <input 
-                                  type="number" 
-                                  name={`variants[${idx}].sellingPrice`} 
-                                  className="admin-input pl-6 font-semibold" 
-                                  placeholder="0.00" 
-                                  value={v.sellingPrice} 
-                                  onChange={formik.handleChange} 
-                                  onBlur={formik.handleBlur} 
-                                />
-                              </div>
+                              <input 
+                                type="number" 
+                                name={`variants[${idx}].sellingPrice`} 
+                                className="admin-input font-semibold" 
+                                placeholder="0.00" 
+                                value={v.sellingPrice} 
+                                onChange={formik.handleChange} 
+                                onBlur={formik.handleBlur} 
+                              />
                             </div>
 
                             <div className="sm:col-span-3">
