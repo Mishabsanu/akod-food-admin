@@ -7,11 +7,9 @@ export default function AddCustomerPage() {
   const router = useRouter();
 
   const handleSubmit = async (data: any) => {
-    // In a real app, we would call the API here
     console.log('Registering customer:', data);
-    // Simulate success
     return Promise.resolve();
   };
 
-  return <CustomerForm title="Register Node" onSubmit={handleSubmit} />;
+  return <CustomerForm title="Add New Customer" onSubmit={handleSubmit} />;
 }

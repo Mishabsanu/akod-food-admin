@@ -8,5 +8,5 @@ export default function AddCategoryPage() {
     await adminApi.createCategory(data);
   };
 
-  return <CategoryForm title="Register New Category" onSubmit={handleSubmit} />;
+  return <CategoryForm title="Add New Category" onSubmit={handleSubmit} />;
 }

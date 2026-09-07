@@ -3,330 +3,453 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
-    ChevronLeft, 
-    Package, 
-    Truck, 
-    User, 
-    MapPin, 
-    CreditCard, 
-    Calendar,
-    ArrowRight,
-    Loader2,
-    CheckCircle2,
-    XCircle,
-    Clock,
-    Printer
+  ChevronLeft, 
+  Package, 
+  Truck, 
+  User, 
+  MapPin, 
+  CreditCard, 
+  Calendar,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Printer,
+  ShoppingBag,
+  ExternalLink,
+  ShieldCheck,
+  Send
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { AdminWorkspace } from '@/components/admin/AdminWorkspace';
+import LogoLoader from '@/components/LogoLoader';
 
 export default function OrderDetailsPage() {
-    const params = useParams();
-    const router = useRouter();
-    const [order, setOrder] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [shipmentData, setShipmentData] = useState({
-        trackingId: '',
-        courierName: ''
-    });
+  const params = useParams();
+  const router = useRouter();
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [updatingShipment, setUpdatingShipment] = useState(false);
+  const [shipmentData, setShipmentData] = useState({
+    trackingId: '',
+    courierName: ''
+  });
 
-    useEffect(() => {
-        fetchOrderDetails();
-    }, [params.id]);
+  useEffect(() => {
+    fetchOrderDetails();
+  }, [params.id]);
 
-    const fetchOrderDetails = async () => {
-        try {
-            const res = await adminApi.getOrders();
-            const found = res.data.data.find((o: any) => o._id === params.id);
-            setOrder(found);
-            if (found?.shipment) {
-                setShipmentData({
-                    trackingId: found.shipment.trackingId || '',
-                    courierName: found.shipment.courierName || ''
-                });
+  const fetchOrderDetails = async () => {
+    try {
+      const res = await adminApi.getOrders();
+      const found = res.data?.data?.find((o: any) => o._id === params.id);
+      setOrder(found);
+      if (found?.shipment) {
+        setShipmentData({
+          trackingId: found.shipment.trackingId || '',
+          courierName: found.shipment.courierName || ''
+        });
+      }
+    } catch (error) {
+      toast.error("Failed to load order details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePrintLabel = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const labelContent = `
+      <html>
+        <head>
+          <title>Shipping Label - ${order?._id}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; margin: 0; }
+            .label-card { 
+              border: 2px solid #000; 
+              padding: 24px; 
+              max-width: 520px; 
+              margin: 0 auto;
+              border-radius: 0px;
             }
-        } catch (error) {
-            toast.error("Failed to load order details");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handlePrintLabel = () => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-
-        const labelContent = `
-            <html>
-                <head>
-                    <title>Shipping Label - ${order._id}</title>
-                    <style>
-                        body { font-family: sans-serif; padding: 40px; }
-                        .label-card { 
-                            border: 2px solid #000; 
-                            padding: 30px; 
-                            max-width: 500px; 
-                            margin: 0 auto;
-                        }
-                        .header { border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
-                        .brand { font-size: 24px; font-weight: bold; color: #5f7161; }
-                        .to-label { font-size: 12px; text-transform: uppercase; color: #666; margin-bottom: 5px; }
-                        .name { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
-                        .address { font-size: 16px; line-height: 1.5; margin-bottom: 15px; }
-                        .phone { font-size: 14px; font-weight: bold; border-top: 1px dashed #ccc; padding-top: 10px; }
-                        .order-ref { margin-top: 30px; font-size: 10px; color: #999; text-align: center; }
-                    </style>
-                </head>
-                <body>
-                    <div class="label-card">
-                        <div class="header">
-                            <div class="brand">AKOD FOOD</div>
-                            <div style="font-size: 10px; color: #999;">ARTISAN HERITAGE SNACKS</div>
-                        </div>
-                        <div class="to-label">SHIP TO:</div>
-                        <div class="name">${order.customer?.name}</div>
-                        <div class="address">${order.shippingAddress}</div>
-                        <div class="phone">CONTACT: ${order.customer?.phone || 'N/A'}</div>
-                        
-                        <div class="order-ref">
-                            ORDER ID: #AKD-${order._id.toUpperCase()}<br/>
-                            DATE: ${new Date(order.createdAt).toLocaleDateString()}
-                        </div>
-                    </div>
-                    <script>
-                        window.onload = () => {
-                            window.print();
-                            window.close();
-                        };
-                    </script>
-                </body>
-            </html>
-        `;
-        printWindow.document.write(labelContent);
-        printWindow.document.close();
-    };
-
-    const handleUpdateShipment = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await adminApi.updateShipment(params.id as string, shipmentData);
-            toast.success("Shipment details updated");
-            fetchOrderDetails();
-        } catch (error) {
-            toast.error("Failed to update shipment");
-        }
-    };
-
-    const handleUpdateStatus = async (status: string) => {
-        try {
-            await adminApi.updateOrder(params.id as string, status);
-            toast.success(`Status updated to ${status}`);
-            fetchOrderDetails();
-        } catch (error) {
-            toast.error("Status update failed");
-        }
-    };
-
-    if (loading) return (
-        <div className="min-h-screen flex items-center justify-center bg-[#faf9f6]">
-            <Loader2 className="w-12 h-12 animate-spin text-gray-300" strokeWidth={1} />
-        </div>
-    );
-
-    if (!order) return <div className="p-20 text-center">Order not discovered in logs.</div>;
-
-    return (
-        <AdminWorkspace>
-            <div className="max-w-6xl mx-auto px-6 py-12 font-sans">
-                
-                {/* Header */}
-                <div className="flex items-center justify-between mb-12">
-                    <div className="flex items-center gap-6">
-                        <button onClick={() => router.back()} className="p-2 hover:bg-white rounded-full transition-colors border border-gray-100 shadow-sm group">
-                            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-                        </button>
-                        <div>
-                            <h1 className="text-3xl font-serif text-gray-900 font-light">Order Details.</h1>
-                            <p className="text-[10px] uppercase tracking-[0.4em] text-gray-400 mt-2 font-black">Ref: #{order._id.toUpperCase()}</p>
-                        </div>
-                    </div>
-                    <div className={`px-5 py-2 rounded-sm border text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-3 ${
-                        order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                        order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                        'bg-amber-50 text-amber-600 border-amber-100'
-                    }`}>
-                        {order.status === 'delivered' ? <CheckCircle2 size={14} /> : order.status === 'cancelled' ? <XCircle size={14} /> : <Clock size={14} />}
-                        {order.status}
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    
-                    {/* Left Column: Order Items & Shipping info */}
-                    <div className="lg:col-span-8 space-y-10">
-                        
-                        {/* Section: Items */}
-                        <section className="bg-white border border-gray-100 p-10 shadow-sm">
-                            <div className="flex items-center gap-4 mb-8">
-                                <Package size={20} className="text-gray-400" />
-                                <h2 className="text-lg font-serif font-light text-gray-900">Ordered Assets</h2>
-                            </div>
-                            <div className="space-y-6">
-                                {order.items.map((item: any, idx: number) => (
-                                    <div key={idx} className="flex gap-6 items-center border-b border-gray-50 pb-6 last:border-0 last:pb-0">
-                                        <div className="w-20 h-20 bg-[#faf9f6] flex-shrink-0 p-2 overflow-hidden border border-gray-50">
-                                            <img src={item.product?.images?.[0] || "/placeholder.png"} className="w-full h-full object-contain" alt="" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">{item.product?.name}</h4>
-                                            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-medium">Quantity: {item.quantity}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-black text-gray-900 tracking-tighter">₹{item.price * item.quantity}</p>
-                                            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">₹{item.price} ea</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        {/* Section: Logistics/Address */}
-                        <section className="bg-white border border-gray-100 p-10 shadow-sm">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="flex items-center gap-4">
-                                    <MapPin size={20} className="text-gray-400" />
-                                    <h2 className="text-lg font-serif font-light text-gray-900">Logistics Destination</h2>
-                                </div>
-                                <button 
-                                    onClick={handlePrintLabel}
-                                    className="flex items-center gap-2 px-4 py-2 border border-[#5f7161] text-[#5f7161] text-[9px] font-black uppercase tracking-[0.2em] hover:bg-[#5f7161] hover:text-white transition-all rounded-sm shadow-sm"
-                                >
-                                    <Printer size={12} /> Print Box Label
-                                </button>
-                            </div>
-                            <p className="text-sm text-gray-600 leading-relaxed font-medium">
-                                {order.shippingAddress}
-                            </p>
-                        </section>
-
-                        {/* Section: Update Shipment Tracking */}
-                        <section className="bg-[#5f7161] p-10 text-white relative overflow-hidden group">
-                            <div className="relative z-10">
-                                <div className="flex items-center gap-4 mb-8">
-                                    <Truck size={20} />
-                                    <h2 className="text-lg font-serif font-light">Manage Shipment</h2>
-                                </div>
-                                
-                                <form onSubmit={handleUpdateShipment} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                                    <div>
-                                        <label className="text-[9px] uppercase tracking-[0.3em] font-black block mb-3 opacity-70">Courier Name</label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="E.g. Delhivery, BlueDart"
-                                            className="w-full bg-white/10 border border-white/20 py-4 px-5 text-xs outline-none focus:bg-white/20 transition-all placeholder:text-white/30 uppercase tracking-widest"
-                                            value={shipmentData.courierName}
-                                            onChange={e => setShipmentData({...shipmentData, courierName: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] uppercase tracking-[0.3em] font-black block mb-3 opacity-70">Tracking Identification</label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="TRACKING ID"
-                                            className="w-full bg-white/10 border border-white/20 py-4 px-5 text-xs outline-none focus:bg-white/20 transition-all placeholder:text-white/30 uppercase tracking-widest"
-                                            value={shipmentData.trackingId}
-                                            onChange={e => setShipmentData({...shipmentData, trackingId: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2 mt-4">
-                                        <button 
-                                            type="submit"
-                                            className="w-full bg-white text-[#5f7161] py-5 text-[10px] font-black uppercase tracking-[0.4em] hover:bg-brand-primary hover:text-white transition-all shadow-xl"
-                                        >
-                                            Confirm Logistics Shipment
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                            {/* Decoration */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-white/10 transition-all duration-700" />
-                        </section>
-                    </div>
-
-                    {/* Right Column: Customer & Summary */}
-                    <div className="lg:col-span-4 space-y-10">
-                        
-                        {/* Section: Customer */}
-                        <section className="bg-white border border-gray-100 p-8 shadow-sm">
-                            <div className="flex items-center gap-4 mb-8">
-                                <User size={20} className="text-gray-400" />
-                                <h2 className="text-lg font-serif font-light text-gray-900">Client Identity</h2>
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400 font-black mb-1">Entity Name</p>
-                                    <p className="text-sm font-black text-gray-900 uppercase">{order.customer?.name}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400 font-black mb-1">Digital Address</p>
-                                    <p className="text-sm font-medium text-gray-500">{order.customer?.email}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400 font-black mb-1">Secure Mobile</p>
-                                    <p className="text-sm font-medium text-gray-500">{order.customer?.phone || 'Not Logged'}</p>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* Section: Financial Summary */}
-                        <section className="bg-white border border-gray-100 p-8 shadow-sm">
-                            <div className="flex items-center gap-4 mb-8">
-                                <CreditCard size={20} className="text-gray-400" />
-                                <h2 className="text-lg font-serif font-light text-gray-900">Financial Log</h2>
-                            </div>
-                            <div className="space-y-4 mb-8 pb-8 border-b border-gray-50">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-gray-400 uppercase tracking-widest font-black">Asset Total</span>
-                                    <span className="text-gray-900 font-black">₹{order.totalAmount}</span>
-                                </div>
-                                <div className="flex justify-between text-xs text-emerald-500">
-                                    <span className="uppercase tracking-widest font-black">Logistics Fee</span>
-                                    <span className="font-black">COMPLIMENTARY</span>
-                                </div>
-                            </div>
-                            <div className="flex justify-between items-end">
-                                <span className="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-black">Net Value</span>
-                                <span className="text-3xl font-serif text-gray-900 font-light tracking-tighter">₹{order.totalAmount}</span>
-                            </div>
-                        </section>
-
-                        {/* Section: Action Hub */}
-                        <section className="space-y-4 pt-4">
-                            <h3 className="text-[10px] uppercase tracking-[0.4em] text-gray-400 font-black px-2">Workflow Actions</h3>
-                            <button 
-                                onClick={() => handleUpdateStatus('processing')}
-                                className="w-full bg-white border border-gray-100 py-5 text-[9px] uppercase tracking-[0.3em] font-black text-gray-500 hover:border-blue-200 hover:text-blue-500 transition-all flex items-center justify-center gap-3"
-                            >
-                                <Clock size={14} /> Begin Processing
-                            </button>
-                            <button 
-                                onClick={() => handleUpdateStatus('delivered')}
-                                className="w-full bg-white border border-gray-100 py-5 text-[9px] uppercase tracking-[0.3em] font-black text-gray-500 hover:border-emerald-200 hover:text-emerald-500 transition-all flex items-center justify-center gap-3"
-                            >
-                                <CheckCircle2 size={14} /> Finalize Delivery
-                            </button>
-                            <button 
-                                onClick={() => handleUpdateStatus('cancelled')}
-                                className="w-full bg-rose-500 text-white py-5 text-[9px] uppercase tracking-[0.4em] font-black hover:bg-rose-600 transition-all shadow-lg flex items-center justify-center gap-3"
-                            >
-                                <XCircle size={14} /> Abort Purchase Node
-                            </button>
-                        </section>
-                    </div>
-
-                </div>
+            .header { border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+            .brand { font-size: 24px; font-weight: 900; color: #143e2c; }
+            .badge { font-size: 10px; font-weight: bold; background: #eee; padding: 3px 6px; border-radius: 0px; }
+            .to-label { font-size: 10px; text-transform: uppercase; color: #666; font-weight: bold; margin-bottom: 4px; }
+            .name { font-size: 20px; font-weight: bold; margin-bottom: 6px; }
+            .address { font-size: 14px; line-height: 1.5; margin-bottom: 14px; }
+            .phone { font-size: 13px; font-weight: bold; border-top: 1px dashed #ccc; padding-top: 10px; }
+            .order-ref { margin-top: 20px; font-size: 10px; color: #666; border-top: 1px solid #eee; padding-top: 10px; display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          <div class="label-card">
+            <div class="header">
+              <div>
+                <div class="brand">AKOD FOOD</div>
+                <div style="font-size: 10px; color: #666; font-weight: bold; margin-top: 2px;">AUTHENTIC KERALA CHIPS</div>
+              </div>
+              <div class="badge">PRIORITY DISPATCH</div>
             </div>
-        </AdminWorkspace>
+            <div class="to-label">DELIVER TO:</div>
+            <div class="name">${order?.customer?.name || 'Customer'}</div>
+            <div class="address">${order?.shippingAddress || 'Address on file'}</div>
+            <div class="phone">CONTACT: ${order?.customer?.phone || 'N/A'}</div>
+            
+            <div class="order-ref">
+              <span>ORDER: #AKD-${String(order?._id).slice(-8).toUpperCase()}</span>
+              <span>DATE: ${new Date(order?.createdAt).toLocaleDateString('en-IN')}</span>
+            </div>
+          </div>
+          <script>
+            window.onload = () => {
+              window.print();
+              window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(labelContent);
+    printWindow.document.close();
+  };
+
+  const handleUpdateShipment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdatingShipment(true);
+    try {
+      await adminApi.updateShipment(params.id as string, shipmentData);
+      toast.success("Shipment tracking details updated");
+      fetchOrderDetails();
+    } catch (error) {
+      toast.error("Failed to update shipment details");
+    } finally {
+      setUpdatingShipment(false);
+    }
+  };
+
+  const handleUpdateStatus = async (status: string) => {
+    try {
+      await adminApi.updateOrder(params.id as string, status);
+      toast.success(`Order status updated to "${status.toUpperCase()}"`);
+      fetchOrderDetails();
+    } catch (error) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <LogoLoader text="Loading Order Details..." size="lg" />
+      </div>
     );
+  }
+
+  if (!order) {
+    return (
+      <AdminWorkspace>
+        <div className="bg-white border border-[#e5e7eb] rounded-lg p-12 text-center max-w-md mx-auto my-12 shadow-2xs">
+          <div className="w-28 h-28 mx-auto mb-3 p-2 rounded-2xl bg-gradient-to-b from-slate-50 to-emerald-50/30 border border-slate-100 flex items-center justify-center">
+            <img src="/empty-state.png" alt="Order Not Found" className="w-full h-full object-contain" />
+          </div>
+          <h2 className="text-sm font-bold text-slate-900">Order Not Found</h2>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1 mb-5">The requested transaction record could not be found or may have been archived.</p>
+          <button 
+            onClick={() => router.push('/orders')} 
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#546b5a] hover:bg-[#415446] text-white rounded-md text-xs font-semibold shadow-xs transition-all"
+          >
+            Back to Orders Register
+          </button>
+        </div>
+      </AdminWorkspace>
+    );
+  }
+
+  return (
+    <AdminWorkspace>
+      <div className="max-w-6xl mx-auto space-y-5 pb-14">
+        
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => router.back()} 
+              className="p-2 bg-white border border-slate-300 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                  Order Details
+                </h1>
+                <span className="font-mono text-xs font-bold text-[#143e2c] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-sm">
+                  #AKD-{String(order._id).slice(-8).toUpperCase()}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                Placed on {new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-1 rounded-sm border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+              order.status === 'delivered' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+              order.status === 'cancelled' ? 'bg-rose-50 text-rose-800 border-rose-200' :
+              'bg-blue-50 text-blue-800 border-blue-200'
+            }`}>
+              {order.status === 'delivered' ? <CheckCircle2 size={13} /> : order.status === 'cancelled' ? <XCircle size={13} /> : <Clock size={13} />}
+              <span>{order.status || 'Pending'}</span>
+            </span>
+
+            <button 
+              onClick={handlePrintLabel}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-md transition-all shadow-xs"
+            >
+              <Printer size={13} />
+              <span>Print Label</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          
+          {/* Left Column: Ordered Items, Shipping Address & Courier Tracking */}
+          <div className="lg:col-span-8 space-y-4">
+            
+            {/* Ordered Products Section */}
+            <div className="admin-card p-4 space-y-4 rounded-lg">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-emerald-50 text-[#143e2c] flex items-center justify-center font-bold border border-emerald-200">
+                  <ShoppingBag size={14} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Ordered Products</h2>
+                  <p className="text-[10px] text-slate-500">Items and variants in this checkout package</p>
+                </div>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {order.items?.map((item: any, idx: number) => (
+                  <div key={idx} className="py-3 first:pt-0 last:pb-0 flex items-center gap-3">
+                    <div className="w-12 h-12 bg-slate-50 rounded-md border border-slate-200 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={item.product?.images?.[0] || "/placeholder.png"} 
+                        className="w-full h-full object-contain" 
+                        alt="" 
+                      />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-xs text-slate-900 truncate">
+                        {item.product?.name || 'Product'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Qty: <span className="font-bold text-slate-800">{item.quantity}</span>
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs font-black text-slate-900">
+                        ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        ₹{item.price} each
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Delivery Destination */}
+            <div className="admin-card p-4 space-y-3 rounded-lg">
+              <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-amber-50 text-amber-800 flex items-center justify-center font-bold border border-amber-200">
+                  <MapPin size={14} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Delivery Address</h2>
+                  <p className="text-[10px] text-slate-500">Shipping location provided by customer</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-700 leading-relaxed font-medium bg-slate-50 p-3 rounded-md border border-slate-200">
+                {order.shippingAddress || 'No shipping address provided.'}
+              </p>
+            </div>
+
+            {/* Shipment Dispatch Tracker */}
+            <div className="admin-card p-4 bg-[#0d2319] text-white space-y-4 rounded-lg border border-[#1a3829]">
+              <div className="flex items-center gap-2 pb-3 border-b border-white/10">
+                <div className="w-6 h-6 rounded-md bg-white/10 text-emerald-300 flex items-center justify-center font-bold">
+                  <Truck size={14} />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-white uppercase tracking-wide">Courier & Dispatch Tracking</h2>
+                  <p className="text-[10px] text-slate-300">Set tracking number so customer can track packet</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdateShipment} className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Courier Service</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Delhivery, BlueDart, DTDC"
+                    className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs font-semibold text-white placeholder:text-white/40 outline-none focus:border-white transition-all"
+                    value={shipmentData.courierName}
+                    onChange={e => setShipmentData({...shipmentData, courierName: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Tracking / AWB Number</label>
+                  <input 
+                    type="text" 
+                    placeholder="AWB123456789"
+                    className="w-full bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-xs font-semibold text-white placeholder:text-white/40 outline-none focus:border-white transition-all font-mono"
+                    value={shipmentData.trackingId}
+                    onChange={e => setShipmentData({...shipmentData, trackingId: e.target.value})}
+                  />
+                </div>
+
+                <div className="md:col-span-2 pt-1">
+                  <button 
+                    type="submit"
+                    disabled={updatingShipment}
+                    className="w-full bg-white text-[#143e2c] py-2 rounded-md text-xs font-bold hover:bg-slate-100 transition-colors shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {updatingShipment ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />}
+                    <span>Save Shipment Details</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+          </div>
+
+          {/* Right Column: Customer Info, Payment Summary, Lifecycle Actions */}
+          <div className="lg:col-span-4 space-y-4">
+            
+            {/* Customer Details */}
+            <div className="admin-card p-4 space-y-3 rounded-lg">
+              <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-[#eff4f0] text-[#546b5a] flex items-center justify-center font-bold border border-[#b3ccb9]">
+                  <User size={14} />
+                </div>
+                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Customer Profile</h2>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Name</p>
+                  <p className="font-bold text-slate-900 mt-0.5">{order.customer?.name || 'Customer'}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Email</p>
+                  <p className="font-medium text-slate-700 mt-0.5 truncate">{order.customer?.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Phone</p>
+                  <p className="font-medium text-slate-700 mt-0.5">{order.customer?.phone || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Summary */}
+            <div className="admin-card p-4 space-y-3 rounded-lg">
+              <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold border border-emerald-200">
+                  <CreditCard size={14} />
+                </div>
+                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Payment Breakdown</h2>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span>Items Subtotal</span>
+                  <span className="font-bold text-slate-900">₹{order.totalAmount?.toLocaleString('en-IN') || 0}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Shipping Fee</span>
+                  <span className="font-bold text-emerald-600">Free</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Payment Method</span>
+                  <span className="font-bold text-slate-800 uppercase text-[9px]">
+                    {order.paymentMethod || 'Online / UPI'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Payment Status</span>
+                  <span className={`px-1.5 py-0.2 rounded-sm text-[9px] font-bold uppercase ${
+                    order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    {order.paymentStatus || 'pending'}
+                  </span>
+                </div>
+
+                <div className="pt-2.5 border-t border-slate-100 flex justify-between items-baseline">
+                  <span className="text-xs font-bold text-slate-800">Total Charged</span>
+                  <span className="text-lg font-black text-slate-900">₹{order.totalAmount?.toLocaleString('en-IN') || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Lifecycle Quick Actions */}
+            <div className="admin-card p-4 space-y-2 rounded-lg">
+              <h3 className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Order Lifecycle Actions
+              </h3>
+
+              <button 
+                onClick={() => handleUpdateStatus('processing')}
+                className="w-full py-1.5 px-3 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Clock size={13} className="text-blue-500" />
+                <span>Mark as Processing</span>
+              </button>
+
+              <button 
+                onClick={() => handleUpdateStatus('shipped')}
+                className="w-full py-1.5 px-3 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Truck size={13} className="text-[#546b5a]" />
+                <span>Mark as Shipped</span>
+              </button>
+
+              <button 
+                onClick={() => handleUpdateStatus('delivered')}
+                className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <CheckCircle2 size={13} />
+                <span>Mark as Delivered</span>
+              </button>
+
+              <button 
+                onClick={() => {
+                  if (confirm("Are you sure you want to cancel this order?")) {
+                    handleUpdateStatus('cancelled');
+                  }
+                }}
+                className="w-full py-1.5 px-3 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <XCircle size={13} />
+                <span>Cancel Order</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </AdminWorkspace>
+  );
 }

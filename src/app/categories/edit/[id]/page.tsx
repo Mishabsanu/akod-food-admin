@@ -14,8 +14,8 @@ export default function EditCategoryPage() {
   useEffect(() => {
     if (id) {
       adminApi.getCategory(id as string)
-        .then(res => setCategory(res.data.data || res.data))
-        .catch(err => console.error('Failed to sync node:', err))
+        .then(res => setCategory(res.data?.data || res.data))
+        .catch(err => console.error('Failed to load category:', err))
         .finally(() => setLoading(false));
     }
   }, [id]);
@@ -24,7 +24,11 @@ export default function EditCategoryPage() {
     await adminApi.updateCategory(id as string, data);
   };
 
-  if (loading) return <div className="h-[400px] flex items-center justify-center"><LogoLoader /></div>;
+  if (loading) return (
+    <div className="min-h-[50vh] flex items-center justify-center">
+      <LogoLoader />
+    </div>
+  );
 
-  return <CategoryForm title="Modify Category Node" initialData={category} onSubmit={handleSubmit} />;
+  return <CategoryForm title="Edit Category" initialData={category} onSubmit={handleSubmit} />;
 }

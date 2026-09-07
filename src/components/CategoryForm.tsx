@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Upload, X, Loader2, ArrowLeft, Layers, Info, Check, AlertCircle } from 'lucide-react';
+import { Upload, X, Loader2, ArrowLeft, Layers, Info, Check, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -15,14 +15,14 @@ interface CategoryFormProps {
 
 const validationSchema = Yup.object({
   name: Yup.string()
-    .required('Classification Label is required')
-    .min(3, 'Label must be at least 3 characters')
-    .max(50, 'Label cannot exceed 50 characters'),
+    .required('Category name is required')
+    .min(2, 'Name must be at least 2 characters')
+    .max(50, 'Name cannot exceed 50 characters'),
   description: Yup.string()
-    .max(500, 'Summary cannot exceed 500 characters')
+    .max(500, 'Description cannot exceed 500 characters')
 });
 
-const CategoryForm = ({ initialData, onSubmit, title }: CategoryFormProps) => {
+export const CategoryForm = ({ initialData, onSubmit, title }: CategoryFormProps) => {
   const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -43,10 +43,10 @@ const CategoryForm = ({ initialData, onSubmit, title }: CategoryFormProps) => {
 
       try {
         await onSubmit(data);
-        toast.success('Classification Node Finalized');
+        toast.success('Category saved successfully');
         router.push('/categories');
       } catch (error) {
-        toast.error('Failed to update catalog architecture');
+        toast.error('Failed to save category');
       } finally {
         setLoading(false);
       }
@@ -71,125 +71,136 @@ const CategoryForm = ({ initialData, onSubmit, title }: CategoryFormProps) => {
     }
   };
 
-  // Dual-color title logic
-  const titleWords = title.split(' ');
-  const firstHalf = titleWords.slice(0, Math.ceil(titleWords.length / 2)).join(' ');
-  const secondHalf = titleWords.slice(Math.ceil(titleWords.length / 2)).join(' ');
-
   return (
-    <div className="w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-[#f1f1ee] pb-6">
-        <div className="flex items-center gap-6">
+    <div className="w-full space-y-5 pb-16 font-sans text-slate-800">
+      
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#e5e7eb]">
+        <div className="flex items-center gap-3">
           <button 
+            type="button"
             onClick={() => router.back()} 
-            className="w-10 h-10 flex items-center justify-center bg-white border border-[#f1f1ee] rounded-full text-[#5f7161] hover:bg-[#fcfcfb] hover:shadow-md transition-all shadow-sm"
+            className="p-2 bg-white border border-slate-300 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-2xs"
+            title="Return to Categories"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
           </button>
-          <div className="space-y-0.5">
-            <h1 className="text-2xl font-black tracking-tighter uppercase italic">
-              <span className="text-[#4a554b]">{firstHalf}</span> <span className="text-[#e7ab79]">{secondHalf}</span>
-            </h1>
-            <p className="text-[8px] font-black uppercase tracking-[0.4em]">
-              <span className="text-[#8b968c]">Classification</span> <span className="text-[#e7ab79]">Intelligence Hub</span>
-            </p>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h1>
+            <p className="text-xs text-slate-500">Configure category branding, banner thumbnail, and taxonomy details</p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button 
+            type="button" 
+            onClick={() => router.back()} 
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+          <button 
+            type="button" 
+            onClick={() => formik.handleSubmit()}
+            disabled={loading}
+            className="btn-primary"
+          >
+            {loading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+            <span>Save Category</span>
+          </button>
         </div>
       </div>
 
-      <form onSubmit={formik.handleSubmit} className="space-y-8">
-        <div className="bg-white border border-[#f1f1ee] rounded-xl p-10 shadow-xl space-y-10 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#5f7161]/5 rounded-full blur-3xl pointer-events-none -mr-32 -mt-32" />
+      <form onSubmit={formik.handleSubmit} className="admin-card p-5 space-y-5">
+        <div className="flex flex-col md:flex-row gap-6">
           
-          <div className="flex flex-col lg:flex-row gap-12 relative z-10">
-            <div className="shrink-0 space-y-3">
-              <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 block">Visual Identifier</label>
-              <label className="relative w-64 h-64 rounded-xl overflow-hidden bg-[#fcfcfb] border-2 border-dashed border-[#f1f1ee] hover:border-[#5f7161] cursor-pointer group transition-all flex items-center justify-center shadow-inner">
-                {preview ? (
-                  <img src={preview} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105" />
-                ) : (
-                  <div className="flex flex-col items-center gap-2 text-[#8b968c] group-hover:text-[#5f7161] transition-colors">
-                    <Upload size={32} strokeWidth={1.5} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Upload Asset</span>
+          {/* Visual Image Banner Dropzone */}
+          <div className="shrink-0 space-y-1.5">
+            <label className="admin-label">Category Banner / Icon</label>
+            <label className="relative w-40 h-40 rounded-md overflow-hidden bg-slate-50 border border-dashed border-slate-300 hover:border-[#546b5a] cursor-pointer group transition-all flex flex-col items-center justify-center p-3 text-center shadow-2xs">
+              {preview ? (
+                <>
+                  <img src={preview} className="w-full h-full object-contain" alt="" />
+                  <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold">
+                    Change Banner
                   </div>
-                )}
-                <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
-                {preview && (
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                    <span className="text-white text-[10px] font-black uppercase tracking-widest">Update Asset</span>
-                  </div>
-                )}
-              </label>
-            </div>
-
-            <div className="flex-1 space-y-8">
-              <div className="grid grid-cols-1 gap-8">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 flex items-center gap-2">
-                    <Layers size={12} className="text-[#e7ab79]" /> Classification Label
-                  </label>
-                  <div className={`bg-[#fcfcfb] border rounded-full px-6 py-4 focus-within:border-[#5f7161] focus-within:bg-white transition-all flex items-center gap-3 shadow-sm ${
-                    formik.touched.name && formik.errors.name ? 'border-red-300 bg-red-50/10' : 'border-[#f1f1ee]'
-                  }`}>
-                    <input 
-                      name="name"
-                      required
-                      className="w-full bg-transparent text-[12px] font-bold outline-none placeholder:text-[#adb5bd] text-[#4a554b]"
-                      placeholder="e.g. Organic Grains Cluster"
-                      value={formik.values.name}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                    />
-                  </div>
-                  {formik.touched.name && formik.errors.name && (
-                    <p className="text-[8px] font-black uppercase text-red-500 tracking-widest flex items-center gap-1 ml-4 animate-in fade-in slide-in-from-left-2">
-                      <AlertCircle size={10} /> {formik.errors.name}
-                    </p>
-                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-1.5 text-slate-400 group-hover:text-[#546b5a] transition-colors">
+                  <Upload size={22} />
+                  <span className="text-xs font-semibold">Upload Banner</span>
+                  <span className="text-[10px] text-slate-400">PNG, JPG, WebP</span>
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 flex items-center gap-2">
-                    <Info size={12} className="text-[#e7ab79]" /> Abstract Intelligence Summary
-                  </label>
-                  <div className={`bg-[#fcfcfb] border rounded-2xl px-6 py-4 focus-within:border-[#5f7161] focus-within:bg-white transition-all flex items-center gap-3 shadow-sm ${
-                    formik.touched.description && formik.errors.description ? 'border-red-300 bg-red-50/10' : 'border-[#f1f1ee]'
-                  }`}>
-                    <textarea 
-                      name="description"
-                      className="w-full bg-transparent text-[12px] font-bold outline-none placeholder:text-[#adb5bd] text-[#4a554b] min-h-[100px] resize-none"
-                      placeholder="Describe the architectural scope of this category..."
-                      value={formik.values.description}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                    />
-                  </div>
-                  {formik.touched.description && formik.errors.description && (
-                    <p className="text-[8px] font-black uppercase text-red-500 tracking-widest flex items-center gap-1 ml-4 animate-in fade-in slide-in-from-left-2">
-                      <AlertCircle size={10} /> {formik.errors.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-10 border-t border-[#f1f1ee] flex flex-col sm:flex-row justify-end gap-4 relative z-10">
-            <button 
-              type="button" onClick={() => router.back()}
-              className="px-10 py-3.5 border border-[#f1f1ee] rounded-full text-[10px] font-black uppercase tracking-widest text-[#8b968c] hover:bg-[#fcfcfb] transition-all"
-            >
-              Discard Changes
-            </button>
-            <button 
-              type="submit" disabled={loading || !formik.isValid}
-              className="px-14 py-3.5 bg-[#5f7161] text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#4d5d4f] transition-all shadow-xl shadow-[#5f7161]/20 disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="animate-spin" size={16} /> : (
-                <>Finalize Classification <Check size={16} /></>
               )}
-            </button>
+              <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+            </label>
+            <p className="admin-helper-text max-w-[160px] text-center">
+              Recommended: 400x400px transparent PNG or high-res JPG.
+            </p>
           </div>
+
+          {/* Details Fields */}
+          <div className="flex-1 space-y-4">
+            <div className="space-y-1">
+              <label className="admin-label">
+                <span>Category Name</span>
+                <span className="text-rose-500 font-bold">*</span>
+              </label>
+              <input 
+                name="name"
+                className="admin-input"
+                placeholder="e.g. Traditional Kerala Banana Chips"
+                value={formik.values.name}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+              {formik.touched.name && formik.errors.name && (
+                <p className="admin-error-text">
+                  <AlertCircle size={12} /> {formik.errors.name}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="admin-label">
+                <span>Catalog Description</span>
+              </label>
+              <textarea 
+                name="description"
+                rows={4}
+                className="admin-input resize-none"
+                placeholder="Describe this category collection, flavor notes, and origin..."
+                value={formik.values.description}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+              {formik.touched.description && formik.errors.description && (
+                <p className="admin-error-text">
+                  <AlertCircle size={12} /> {formik.errors.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="pt-3 border-t border-[#e5e7eb] flex items-center justify-end gap-2">
+          <button 
+            type="button" 
+            onClick={() => router.back()} 
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="btn-primary"
+          >
+            {loading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+            <span>Save Category</span>
+          </button>
         </div>
       </form>
     </div>

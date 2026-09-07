@@ -2,37 +2,71 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  Plus, Search, Edit2, Trash2, Layers, ListFilter, 
-  ChevronLeft, ChevronRight, Activity, Grid, Eye, 
-  LayoutGrid, List 
+  Plus, Edit2, Trash2, Layers
 } from 'lucide-react';
 import LogoLoader from '@/components/LogoLoader';
 import { adminApi } from '@/lib/api';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-// Reusable Atmospheric Components
 import { AdminWorkspace } from '@/components/admin/AdminWorkspace';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminSearch } from '@/components/admin/AdminSearch';
 import { AdminTable } from '@/components/admin/AdminTable';
 import { AdminPagination } from '@/components/admin/AdminPagination';
+import { TableSkeleton } from '@/components/admin/TableSkeleton';
+import { TableEmptyState } from '@/components/admin/TableEmptyState';
 
-const Categories = () => {
+export const ALL_CATEGORY_COLUMNS = [
+  { key: 'catId', label: 'CATEGORY ID' },
+  { key: 'banner', label: 'BANNER' },
+  { key: 'name', label: 'CATEGORY NAME' },
+  { key: 'description', label: 'DESCRIPTION' },
+  { key: 'status', label: 'STATUS' },
+  { key: 'actions', label: 'ACTIONS' },
+];
+
+export default function Categories() {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const itemsPerPage = viewMode === 'grid' ? 12 : 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+    () => new Set(ALL_CATEGORY_COLUMNS.map(c => c.key))
+  );
+
+  const toggleColumn = (key: string) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size > 1) {
+          next.delete(key);
+        } else {
+          toast.info("At least one column must remain visible");
+        }
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const selectAllColumns = () => {
+    if (visibleColumns.size === ALL_CATEGORY_COLUMNS.length) {
+      setVisibleColumns(new Set(['catId', 'name', 'description', 'status', 'actions']));
+    } else {
+      setVisibleColumns(new Set(ALL_CATEGORY_COLUMNS.map(c => c.key)));
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
-  }, [searchTerm, currentPage, viewMode]);
+  }, [searchTerm, currentPage, itemsPerPage]);
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -42,210 +76,187 @@ const Categories = () => {
         page: currentPage,
         limit: itemsPerPage
       });
-      setCategories(res.data.data || []);
-      setTotalPages(res.data.pages || 1);
-      setTotalItems(res.data.total || 0);
+      setCategories(res.data?.data || []);
+      setTotalPages(res.data?.pages || 1);
+      setTotalItems(res.data?.total || 0);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to load category architecture');
+      toast.error('Failed to load categories');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleExport = () => {
+    try {
+      const headers = ["Category ID", "Name", "Description", "Created At"];
+      const rows = categories.map(c => [
+        `CAT-2026-${String(c._id).slice(-4).toUpperCase()}`,
+        `"${c.name || ''}"`,
+        `"${c.description || ''}"`,
+        new Date(c.createdAt || Date.now()).toLocaleDateString('en-IN')
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `categories_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Categories exported to CSV");
+    } catch (e) {
+      toast.error("Export failed");
+    }
+  };
+
   const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete category "${name}"?`)) return;
     try {
       await adminApi.deleteCategory(id);
-      toast.success('CATEGORY NODE PURGED', {
-        description: `Resource [${name}] has been permanently decommissioned.`,
-        duration: 4000,
-      });
+      toast.success(`Category "${name}" deleted`);
       fetchCategories();
     } catch (error) {
-      toast.error('PURGE FAILED', {
-        description: 'The category node could not be decommissioned.',
-      });
+      toast.error('Failed to delete category');
     }
   };
 
   return (
     <AdminWorkspace>
+      {/* Enterprise Header */}
       <AdminHeader 
-        title="Category"
-        secondTitle="Architecture"
-        subtitle="Catalog Classifications"
-        actionLabel="New Category"
+        icon={Layers}
+        title="Product Categories & Structure Register"
+        subtitle="Catalog classification, brand groupings, thumbnail banners & descriptions"
+        actionLabel="New Entry"
         actionHref="/categories/add"
         actionIcon={Plus}
-      >
-        <div className="flex items-center bg-white/80 backdrop-blur-sm border border-white rounded-full p-1 shadow-sm">
-          <button 
-            onClick={() => setViewMode('list')}
-            className={`p-2 rounded-full transition-all ${viewMode === 'list' ? 'bg-[#5f7161] text-white shadow-lg' : 'text-[#adb5bd] hover:text-[#5f7161]'}`}
-          >
-            <List size={16} />
-          </button>
-          <button 
-            onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-full transition-all ${viewMode === 'grid' ? 'bg-[#5f7161] text-white shadow-lg' : 'text-[#adb5bd] hover:text-[#5f7161]'}`}
-          >
-            <LayoutGrid size={16} />
-          </button>
-        </div>
-      </AdminHeader>
-
-      <AdminStats stats={[
-        { label: 'Total Nodes', value: totalItems, icon: Layers, color: 'bg-[#5f7161]' },
-        { label: 'Sync Status', value: 'Live', icon: Activity, color: 'bg-[#8ba190]' },
-        { label: 'Registry', value: '100%', icon: Eye, color: 'bg-[#d49a68]' },
-        { label: 'Architecture', value: viewMode === 'grid' ? 'Cluster' : 'Linear', icon: Grid, color: 'bg-[#4a554b]' },
-      ]} />
-
-      <AdminSearch 
-        searchTerm={searchTerm}
-        onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        placeholder="Filter Classification Nodes..."
+        onExport={handleExport}
       />
 
+      {/* COMPACT SINGLE-VALUE GRID TABLE WITH 1PX BORDERS */}
       <AdminTable>
-        <div className="flex-1">
-          {loading ? <div className="h-[400px] flex items-center justify-center"><LogoLoader /></div> : (
-            viewMode === 'list' ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-[#5f7161] text-white">
-                    <tr>
-                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-center w-20">Preview</th>
-                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-left">Classification Node</th>
-                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-left">Abstract Summary</th>
-                      <th className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">Commands</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100/50">
-                    {categories.length > 0 ? categories.map((c) => (
-                      <tr key={c._id} className="group transition-all duration-300 hover:bg-white/80 relative">
-                        <td className="px-6 py-2.5 text-center relative">
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#e7ab79] scale-y-0 group-hover:scale-y-100 transition-transform origin-top duration-300" />
-                          <div className="w-9 h-9 mx-auto rounded-full bg-white border border-[#f1f1ee] flex items-center justify-center overflow-hidden shadow-sm group-hover:shadow-md transition-all">
-                            {c.image && !c.image.includes('placeholder') ? (
-                              <img src={c.image} className="w-full h-full object-contain" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-[#5f7161]/5 text-[#5f7161] font-black text-[10px]">
-                                {c.name?.charAt(0)}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-2.5 text-left">
-                          <p className="font-black text-[11px] text-[#4a554b] tracking-tight group-hover:text-[#5f7161] transition-colors">
-                            {c.name}
-                          </p>
-                          <p className="text-[8px] text-[#8b968c] font-black uppercase tracking-widest">REF: #{c._id?.slice(-6).toUpperCase()}</p>
-                        </td>
-                        <td className="px-6 py-2.5 text-left text-[#8b968c] text-[10px] font-bold italic truncate max-w-xs group-hover:text-[#4a554b] transition-colors">
-                          {c.description || 'No descriptive summary provided...'}
-                        </td>
-                        <td className="px-6 py-2.5 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Link href={`/categories/edit/${c._id}`} className="p-2 text-[#adb5bd] hover:text-[#5f7161] hover:bg-[#5f7161]/5 rounded-full transition-all">
-                              <Edit2 size={15} />
-                            </Link>
-                            <button 
-                              onClick={() => {
-                                toast.custom((t) => (
-                                  <div className="bg-white/95 backdrop-blur-md border-l-4 border-red-500 shadow-2xl rounded-sm p-4 w-[380px] animate-in slide-in-from-right-8">
-                                    <div className="flex flex-col gap-3">
-                                      <div>
-                                        <h3 className="text-[10px] font-black text-[#4a554b] uppercase tracking-widest">Terminate Node?</h3>
-                                        <p className="text-[10px] text-[#8b968c] font-bold">Permanently decommission <span className="text-[#5f7161]">{c.name}</span>?</p>
-                                      </div>
-                                      <div className="flex justify-end gap-2">
-                                        <button onClick={() => toast.dismiss(t)} className="px-4 py-1.5 bg-[#f1f1ee] text-[#4a554b] text-[9px] font-black uppercase tracking-widest rounded-sm">Cancel</button>
-                                        <button onClick={() => { handleDelete(c._id, c.name); toast.dismiss(t); }} className="px-4 py-1.5 bg-red-500 text-white text-[9px] font-black uppercase tracking-widest rounded-sm">Confirm Purge</button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ), { position: 'top-right' });
-                              }}
-                              className="p-2 text-[#adb5bd] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan={4} className="py-20 text-center text-[11px] font-black uppercase text-[#8b968c] tracking-[0.4em]">No Classifications Found</td>
-                      </tr>
+        {/* Reusable Filter Bar */}
+        <AdminSearch 
+          searchTerm={searchTerm}
+          onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
+          placeholder="Search category ID, name, description..."
+          totalCount={totalItems}
+          columns={ALL_CATEGORY_COLUMNS}
+          visibleColumnKeys={visibleColumns}
+          onToggleColumn={toggleColumn}
+          onSelectAllColumns={selectAllColumns}
+        />
+
+        {/* Data Table */}
+        <div className="w-full border-t border-[#e5e7eb] overflow-x-auto relative">
+          <table className="ecom-table">
+            <thead className="ecom-thead">
+              <tr>
+                {visibleColumns.has('catId') && <th className="ecom-th">CATEGORY ID</th>}
+                {visibleColumns.has('banner') && <th className="ecom-th">BANNER</th>}
+                {visibleColumns.has('name') && <th className="ecom-th">CATEGORY NAME</th>}
+                {visibleColumns.has('description') && <th className="ecom-th">DESCRIPTION</th>}
+                {visibleColumns.has('status') && <th className="ecom-th text-center">STATUS</th>}
+                {visibleColumns.has('actions') && <th className="ecom-th text-center">ACTIONS</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <TableSkeleton rows={6} cols={visibleColumns.size || 6} showThumbnail={true} />
+              ) : categories.length > 0 ? (
+                categories.map((c) => (
+                  <tr key={c._id} className="ecom-tr">
+                    {visibleColumns.has('catId') && (
+                      <td className="ecom-td font-mono font-medium text-slate-700 text-xs">
+                        CAT-2026-{String(c._id).slice(-4).toUpperCase()}
+                      </td>
                     )}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
-                {categories.length > 0 ? categories.map((c) => (
-                  <div key={c._id} className="group relative bg-white border border-[#f1f1ee] rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-                    <div className="absolute top-3 right-3 z-10 flex gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                      <Link href={`/categories/edit/${c._id}`} className="p-2 bg-white/90 backdrop-blur-md text-[#5f7161] rounded-full shadow-lg hover:bg-[#5f7161] hover:text-white transition-all">
-                        <Edit2 size={14} />
-                      </Link>
-                      <button 
-                        onClick={() => handleDelete(c._id, c.name)}
-                        className="p-2 bg-white/90 backdrop-blur-md text-red-500 rounded-full shadow-lg hover:bg-red-500 hover:text-white transition-all"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-
-                    <div className="aspect-[4/3] relative overflow-hidden bg-[#fcfcfb] flex items-center justify-center p-6">
-                      {c.image && !c.image.includes('placeholder') ? (
-                        <img src={c.image} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110" />
-                      ) : (
-                        <div className="w-20 h-20 rounded-full bg-[#5f7161]/5 flex items-center justify-center text-[#5f7161] text-3xl font-black">
-                          {c.name?.charAt(0)}
+                    {visibleColumns.has('banner') && (
+                      <td className="ecom-td text-center">
+                        <div className="w-7 h-7 rounded border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden p-0.5 mx-auto">
+                          {c.image && !c.image.includes('placeholder') ? (
+                            <img src={c.image} className="w-full h-full object-contain" alt="" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-[#eff4f0] text-[#546b5a] font-bold text-xs">
+                              {c.name?.charAt(0) || 'C'}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-
-                    <div className="p-5 space-y-3">
-                      <div>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-[#e7ab79] mb-1">Architecture Node</p>
-                        <h3 className="text-sm font-black text-[#4a554b] group-hover:text-[#5f7161] transition-colors truncate uppercase italic">{c.name}</h3>
-                      </div>
-                      <p className="text-[10px] text-[#8b968c] font-bold line-clamp-2 leading-relaxed h-10 italic">
-                        {c.description || 'No descriptive summary provided for this classification node...'}
-                      </p>
-                      <div className="pt-4 border-t border-[#f1f1ee] flex justify-between items-center">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-[#8b968c]">REF: #{c._id?.slice(-6).toUpperCase()}</span>
-                        <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 bg-[#5f7161] rounded-full animate-pulse" />
+                      </td>
+                    )}
+                    {visibleColumns.has('name') && (
+                      <td className="ecom-td font-medium text-slate-900">
+                        {c.name}
+                      </td>
+                    )}
+                    {visibleColumns.has('description') && (
+                      <td className="ecom-td text-slate-600 max-w-md truncate font-normal">
+                        {c.description || 'No description provided.'}
+                      </td>
+                    )}
+                    {visibleColumns.has('status') && (
+                      <td className="ecom-td text-center">
+                        <span className="badge-status badge-status-teal">
+                          ACTIVE
+                        </span>
+                      </td>
+                    )}
+                    {visibleColumns.has('actions') && (
+                      <td className="ecom-td text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Link 
+                            href={`/categories/edit/${c._id}`}
+                            title="Edit Category"
+                            className="action-btn text-slate-400 hover:text-[#4f46e5]"
+                          >
+                            <Edit2 size={13} />
+                          </Link>
+                          <button 
+                            onClick={() => handleDelete(c._id, c.name)}
+                            title="Delete Category"
+                            className="action-btn action-btn-danger text-slate-400"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="col-span-full py-20 text-center text-[11px] font-black uppercase text-[#8b968c] tracking-[0.4em]">No Classifications Found</div>
-                )}
-              </div>
-            )
-          )}
+                      </td>
+                    )}
+                  </tr>
+                ))
+              ) : (
+                <TableEmptyState 
+                  colSpan={visibleColumns.size || 6}
+                  title="No categories found"
+                  description={
+                    searchTerm
+                      ? "No categories matched your search term. Try resetting your search query."
+                      : "No product categories have been created yet."
+                  }
+                  hasFilters={Boolean(searchTerm)}
+                  onResetFilters={() => {
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                  }}
+                  actionLabel="Add Category"
+                  actionHref="/categories/add"
+                />
+              )}
+            </tbody>
+          </table>
         </div>
 
+        {/* Enterprise Pagination Stepper */}
         <AdminPagination 
           currentPage={currentPage}
           totalPages={totalPages}
           totalItems={totalItems}
           itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
-          label="classifications"
+          onItemsPerPageChange={(limit) => { setItemsPerPage(limit); setCurrentPage(1); }}
+          label="categories"
         />
       </AdminTable>
     </AdminWorkspace>
   );
-};
-
-export default Categories;
+}

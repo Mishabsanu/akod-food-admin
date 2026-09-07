@@ -69,61 +69,70 @@ const CategoryModal = ({ isOpen, onClose, onSave, category }: CategoryModalProps
             className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
           />
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="relative bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden"
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="relative bg-white w-full max-w-lg rounded-lg border border-slate-300 shadow-xl overflow-hidden"
           >
-            <div className="p-8 border-b-2 border-[#e2e4dd] flex justify-between items-center">
-              <h2 className="text-2xl font-black text-[#323d33]">{category ? 'Edit Category' : 'New Category'}</h2>
-              <button onClick={onClose} className="p-2 hover:bg-[#f3f4f0] rounded-full transition-colors">
-                <X size={24} className="text-[#5f7161]" />
+            <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
+              <h2 className="text-lg font-bold text-slate-900">{category ? 'Edit Category' : 'New Category'}</h2>
+              <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 hover:text-slate-800 transition-colors">
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
-              <div className="flex flex-col items-center gap-4">
-                <label className="relative w-32 h-32 rounded-3xl overflow-hidden bg-[#f3f4f0] border-2 border-dashed border-[#e2e4dd] hover:border-[#5f7161] cursor-pointer group transition-all">
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              <div className="flex flex-col items-center gap-2">
+                <label className="relative w-24 h-24 rounded-md overflow-hidden bg-slate-50 border border-dashed border-slate-300 hover:border-[#143e2c] cursor-pointer group transition-all">
                   {preview ? (
                     <img src={preview} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-[#7d8a7e]">
-                      <Upload size={24} />
-                      <span className="text-[10px] font-bold mt-1">Upload</span>
+                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                      <Upload size={20} />
+                      <span className="text-[9px] font-bold mt-1">Upload</span>
                     </div>
                   )}
                   <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
                 </label>
-                <p className="text-[10px] font-black uppercase text-[#5f7161] tracking-widest">Category Icon</p>
+                <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Category Icon</p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#7d8a7e]">Title</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Title</label>
                 <input 
                   required
-                  className="w-full bg-[#f3f4f0] border-2 border-[#e2e4dd] rounded-2xl py-3.5 px-6 outline-none focus:border-[#5f7161] transition-all font-bold text-[#323d33]"
+                  className="admin-input rounded-md"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#7d8a7e]">Short Summary</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Short Summary</label>
                 <textarea 
-                  className="w-full bg-[#f3f4f0] border-2 border-[#e2e4dd] rounded-2xl py-3.5 px-6 outline-none focus:border-[#5f7161] transition-all font-bold text-[#323d33] resize-none"
+                  className="admin-input rounded-md resize-none"
                   rows={3}
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
 
-              <button 
-                type="submit"
-                disabled={loading}
-                className="w-full py-5 nature-gradient text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-[#5f7161]/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : category ? 'Update Category' : 'Create Category'}
-              </button>
+              <div className="pt-2 flex gap-2">
+                <button 
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2 bg-white border border-slate-300 text-slate-700 rounded-md text-xs font-bold hover:bg-slate-50 transition-all shadow-xs"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="flex-1 py-2 bg-[#143e2c] text-white rounded-md border border-[#143e2c] text-xs font-bold hover:bg-[#0d281e] shadow-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={14} /> : category ? 'Update Category' : 'Create Category'}
+                </button>
+              </div>
             </form>
           </motion.div>
         </div>

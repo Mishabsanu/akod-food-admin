@@ -61,6 +61,8 @@ export interface IProduct extends Document {
   returnAvailable?: boolean;
   status: 'Active' | 'Inactive';
   flavor?: string;
+  instagramVideoUrl?: string;
+  videoUrl?: string;
   oilTypeUsed?: string;
   dietType?: 'Vegan' | 'Gluten Free' | 'Keto Friendly' | 'None';
   certification?: string;
@@ -133,6 +135,8 @@ const ProductSchema = new Schema<IProduct>({
   returnAvailable: { type: Boolean, default: false },
   status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
   flavor: { type: String },
+  instagramVideoUrl: { type: String },
+  videoUrl: { type: String },
   oilTypeUsed: { type: String },
   dietType: { type: String, enum: ['Vegan', 'Gluten Free', 'Keto Friendly', 'None'], default: 'None' },
   certification: { type: String },

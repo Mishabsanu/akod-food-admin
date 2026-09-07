@@ -4,11 +4,12 @@ import { ReactNode } from 'react';
 
 interface AdminTableProps {
   children: ReactNode;
+  className?: string;
 }
 
-export const AdminTable = ({ children }: AdminTableProps) => {
+export const AdminTable = ({ children, className = "" }: AdminTableProps) => {
   return (
-    <div className="bg-white/40 backdrop-blur-md border border-white rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col transition-all duration-500 hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+    <div className={`w-full bg-white border border-[#e5e7eb] font-sans text-slate-800 relative shadow-2xs ${className}`}>
       {children}
     </div>
   );

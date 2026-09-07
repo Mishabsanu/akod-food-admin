@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Shield, ArrowLeft, Loader2, Lock, Mail, User, Activity, ChevronRight, AlertCircle, Check } from 'lucide-react';
+import { Shield, ArrowLeft, Loader2, Lock, Mail, User, Activity, ChevronRight, AlertCircle, Check, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -16,14 +16,15 @@ interface UserFormProps {
 const validationSchema = (isEdit: boolean) => Yup.object({
   name: Yup.string().required('Full Name is required').min(2, 'Name too short'),
   email: Yup.string().email('Invalid email address').required('Email is required'),
-  password: isEdit ? Yup.string() : Yup.string().required('Password is required').min(8, 'Minimum 8 characters'),
+  password: isEdit ? Yup.string() : Yup.string().required('Password is required').min(6, 'Minimum 6 characters'),
   role: Yup.string().required('Role is required'),
   status: Yup.string().required('Status is required')
 });
 
-const UserForm = ({ initialData, onSubmit, title }: UserFormProps) => {
+export const UserForm = ({ initialData, onSubmit, title }: UserFormProps) => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const formik = useFormik({
     initialValues: {
@@ -38,10 +39,10 @@ const UserForm = ({ initialData, onSubmit, title }: UserFormProps) => {
       setLoading(true);
       try {
         await onSubmit(values);
-        toast.success('Personnel Node Synchronized');
+        toast.success('Admin staff credentials saved');
         router.push('/users');
       } catch (error) {
-        toast.error('Sync Failure');
+        toast.error('Failed to save staff credentials');
       } finally {
         setLoading(false);
       }
@@ -60,143 +61,199 @@ const UserForm = ({ initialData, onSubmit, title }: UserFormProps) => {
     }
   }, [initialData]);
 
-  const titleWords = title.split(' ');
-  const firstHalf = titleWords.slice(0, Math.ceil(titleWords.length / 2)).join(' ');
-  const secondHalf = titleWords.slice(Math.ceil(titleWords.length / 2)).join(' ');
-
   return (
-    <div className="w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-[#f1f1ee] pb-6">
-        <div className="flex items-center gap-6">
+    <div className="w-full space-y-5 pb-16 font-sans text-slate-800">
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#e5e7eb]">
+        <div className="flex items-center gap-3">
           <button 
+            type="button"
             onClick={() => router.back()} 
-            className="w-10 h-10 flex items-center justify-center bg-white border border-[#f1f1ee] rounded-full text-[#5f7161] hover:bg-[#fcfcfb] hover:shadow-md transition-all shadow-sm"
+            className="p-2 bg-white border border-slate-300 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-2xs"
+            title="Return to Users"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
           </button>
-          <div className="space-y-0.5">
-            <h1 className="text-2xl font-black tracking-tighter uppercase italic">
-              <span className="text-[#4a554b]">{firstHalf}</span> <span className="text-[#e7ab79]">{secondHalf}</span>
-            </h1>
-            <p className="text-[8px] font-black uppercase tracking-[0.4em]">
-              <span className="text-[#8b968c]">Personnel Control</span> <span className="text-[#e7ab79]">Admin Hub</span>
-            </p>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h1>
+            <p className="text-xs text-slate-500">Staff credentials, role authorizations, and account status</p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button 
+            type="button" 
+            onClick={() => router.back()} 
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+          <button 
+            type="button" 
+            onClick={() => formik.handleSubmit()}
+            disabled={loading}
+            className="btn-primary"
+          >
+            {loading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+            <span>Save Staff User</span>
+          </button>
         </div>
       </div>
 
-      <form onSubmit={formik.handleSubmit} className="space-y-8">
-        <div className="bg-white border border-[#f1f1ee] rounded-xl p-10 shadow-xl space-y-10 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#5f7161]/5 rounded-full blur-3xl pointer-events-none -mr-32 -mt-32" />
+      <form onSubmit={formik.handleSubmit} className="admin-card p-5 space-y-4">
+        <div className="flex items-center gap-2 pb-2.5 border-b border-[#e5e7eb]">
+          <div className="w-6 h-6 rounded-md bg-[#eff4f0] text-[#546b5a] flex items-center justify-center font-bold">
+            <Shield size={14} />
+          </div>
+          <div>
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Staff Profile & Credentials</h2>
+            <p className="text-[11px] text-slate-500">Configure dashboard permissions and authentication details</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 flex items-center gap-2">
-                <User size={12} className="text-[#e7ab79]" /> Identity Label
-              </label>
-              <div className={`bg-[#fcfcfb] border rounded-full px-5 py-3 focus-within:border-[#5f7161] transition-all flex items-center gap-3 shadow-sm ${
-                formik.touched.name && formik.errors.name ? 'border-red-300 bg-red-50/10' : 'border-[#f1f1ee]'
-              }`}>
-                <input 
-                  name="name"
-                  className="w-full bg-transparent text-[11px] font-bold outline-none placeholder:text-[#adb5bd] text-[#4a554b]"
-                  placeholder="e.g. Alexander Kod"
-                  value={formik.values.name} onChange={formik.handleChange} onBlur={formik.handleBlur}
-                />
-              </div>
-              {formik.touched.name && formik.errors.name && <p className="text-[8px] font-black uppercase text-red-500 tracking-widest ml-4 flex items-center gap-1"><AlertCircle size={10}/> {formik.errors.name}</p>}
+          {/* Name */}
+          <div className="space-y-1 md:col-span-2">
+            <label className="admin-label">
+              <span>Full Name</span>
+              <span className="text-rose-500 font-bold">*</span>
+            </label>
+            <div className="relative">
+              <input 
+                name="name"
+                className="admin-input pl-8"
+                placeholder="e.g. Rahul Sharma"
+                value={formik.values.name}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+              <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             </div>
-
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 flex items-center gap-2">
-                <Mail size={12} className="text-[#e7ab79]" /> Network Node (Email)
-              </label>
-              <div className={`bg-[#fcfcfb] border rounded-full px-5 py-3 focus-within:border-[#5f7161] transition-all flex items-center gap-3 shadow-sm ${
-                formik.touched.email && formik.errors.email ? 'border-red-300 bg-red-50/10' : 'border-[#f1f1ee]'
-              }`}>
-                <input 
-                  name="email" type="email"
-                  className="w-full bg-transparent text-[11px] font-bold outline-none placeholder:text-[#adb5bd] text-[#4a554b]"
-                  placeholder="e.g. admin@akod.com"
-                  value={formik.values.email} onChange={formik.handleChange} onBlur={formik.handleBlur}
-                />
-              </div>
-              {formik.touched.email && formik.errors.email && <p className="text-[8px] font-black uppercase text-red-500 tracking-widest ml-4 flex items-center gap-1"><AlertCircle size={10}/> {formik.errors.email}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 flex items-center gap-2">
-                <Shield size={12} className="text-[#e7ab79]" /> Authority Level
-              </label>
-              <div className="relative">
-                <select 
-                  name="role"
-                  className="w-full bg-[#fcfcfb] border border-[#f1f1ee] rounded-full px-5 py-3 text-[11px] font-bold text-[#4a554b] outline-none appearance-none cursor-pointer focus:border-[#5f7161] transition-all shadow-sm"
-                  value={formik.values.role} onChange={formik.handleChange} onBlur={formik.handleBlur}
-                >
-                  <option value="Super Admin">Super Admin</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Staff">Staff</option>
-                  <option value="Operator">Operator</option>
-                </select>
-                <ChevronRight size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-[#adb5bd] rotate-90 pointer-events-none" />
-              </div>
-            </div>
-
-            {!initialData && (
-              <div className="space-y-2">
-                <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 flex items-center gap-2">
-                  <Lock size={12} className="text-[#e7ab79]" /> Security Key
-                </label>
-                <div className={`bg-[#fcfcfb] border rounded-full px-5 py-3 focus-within:border-[#5f7161] transition-all flex items-center gap-3 shadow-sm ${
-                  formik.touched.password && formik.errors.password ? 'border-red-300 bg-red-50/10' : 'border-[#f1f1ee]'
-                }`}>
-                  <input 
-                    name="password" type="password"
-                    className="w-full bg-transparent text-[11px] font-bold outline-none placeholder:text-[#adb5bd] text-[#4a554b]"
-                    placeholder="Minimum 8 characters"
-                    value={formik.values.password} onChange={formik.handleChange} onBlur={formik.handleBlur}
-                  />
-                </div>
-                {formik.touched.password && formik.errors.password && <p className="text-[8px] font-black uppercase text-red-500 tracking-widest ml-4 flex items-center gap-1"><AlertCircle size={10}/> {formik.errors.password}</p>}
-              </div>
+            {formik.touched.name && formik.errors.name && (
+              <p className="admin-error-text">
+                <AlertCircle size={12} /> {formik.errors.name}
+              </p>
             )}
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 flex items-center gap-2">
-                <Activity size={12} className="text-[#e7ab79]" /> Node Status
+          {/* Email */}
+          <div className="space-y-1 md:col-span-2">
+            <label className="admin-label">
+              <span>Email Address</span>
+              <span className="text-rose-500 font-bold">*</span>
+            </label>
+            <div className="relative">
+              <input 
+                name="email"
+                type="email"
+                className="admin-input pl-8"
+                placeholder="rahul@akodfood.com"
+                value={formik.values.email}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+              <Mail size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+            {formik.touched.email && formik.errors.email && (
+              <p className="admin-error-text">
+                <AlertCircle size={12} /> {formik.errors.email}
+              </p>
+            )}
+          </div>
+
+          {/* Role */}
+          <div className="space-y-1">
+            <label className="admin-label">
+              <span>Role & Authority</span>
+              <span className="text-rose-500 font-bold">*</span>
+            </label>
+            <select 
+              name="role"
+              className="admin-input admin-select bg-white cursor-pointer"
+              value={formik.values.role}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            >
+              <option value="Super Admin">Super Admin — Full Administrative Control</option>
+              <option value="Admin">Admin — Catalog & Orders Management</option>
+              <option value="Staff">Staff — Dispatch & Order Processing</option>
+              <option value="Operator">Operator — Read-Only Storefront Records</option>
+            </select>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-1">
+            <label className="admin-label">
+              <span>Account Status</span>
+              <span className="text-rose-500 font-bold">*</span>
+            </label>
+            <select 
+              name="status"
+              className="admin-input admin-select bg-white cursor-pointer"
+              value={formik.values.status}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            >
+              <option value="Active">Active — Login Permitted</option>
+              <option value="Suspended">Suspended — Account Blocked</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+
+          {/* Password */}
+          {!initialData && (
+            <div className="space-y-1 md:col-span-2">
+              <label className="admin-label">
+                <span>Access Password</span>
+                <span className="text-rose-500 font-bold">*</span>
               </label>
               <div className="relative">
-                <select 
-                  name="status"
-                  className="w-full bg-[#fcfcfb] border border-[#f1f1ee] rounded-full px-5 py-3 text-[11px] font-bold text-[#4a554b] outline-none appearance-none cursor-pointer focus:border-[#5f7161] transition-all shadow-sm"
-                  value={formik.values.status} onChange={formik.handleChange} onBlur={formik.handleBlur}
+                <input 
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  className="admin-input pl-8 pr-9"
+                  placeholder="Minimum 6 characters securely hashed"
+                  value={formik.values.password}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                />
+                <KeyRound size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
-                  <option value="Active">Active</option>
-                  <option value="Suspended">Suspended</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-                <ChevronRight size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-[#adb5bd] rotate-90 pointer-events-none" />
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
               </div>
-            </div>
-          </div>
-
-          <div className="pt-10 border-t border-[#f1f1ee] flex flex-col sm:flex-row justify-end gap-4 relative z-10">
-            <button 
-              type="button" onClick={() => router.back()}
-              className="px-8 py-3.5 border border-[#f1f1ee] rounded-full text-[10px] font-black uppercase tracking-widest text-[#8b968c] hover:bg-[#fcfcfb] transition-all"
-            >
-              Abort Procedure
-            </button>
-            <button 
-              type="submit" disabled={loading || !formik.isValid}
-              className="px-12 py-3.5 bg-[#5f7161] text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#4d5d4f] transition-all shadow-xl shadow-[#5f7161]/20 disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="animate-spin" size={16} /> : (
-                <>Finalize Sync <Check size={16} /></>
+              {formik.touched.password && formik.errors.password && (
+                <p className="admin-error-text">
+                  <AlertCircle size={12} /> {formik.errors.password}
+                </p>
               )}
-            </button>
-          </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="pt-3 border-t border-[#e5e7eb] flex items-center justify-end gap-2">
+          <button 
+            type="button" 
+            onClick={() => router.back()} 
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="btn-primary"
+          >
+            {loading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+            <span>Save Staff User</span>
+          </button>
         </div>
       </form>
     </div>

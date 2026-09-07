@@ -2,36 +2,74 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  Users, Search, Trash2, Mail, Phone, Calendar, 
-  ChevronLeft, ChevronRight, ListFilter, ShieldCheck,
-  ShieldAlert, Activity, UserMinus, UserCheck, ArrowUp, ArrowDown
+  Users, Trash2, Lock, Unlock, Plus
 } from 'lucide-react';
 import LogoLoader from '@/components/LogoLoader';
 import { adminApi } from '@/lib/api';
 import { toast } from 'sonner';
 
-// Reusable Atmospheric Components
 import { AdminWorkspace } from '@/components/admin/AdminWorkspace';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminSearch } from '@/components/admin/AdminSearch';
 import { AdminTable } from '@/components/admin/AdminTable';
 import { AdminPagination } from '@/components/admin/AdminPagination';
+import { TableSkeleton } from '@/components/admin/TableSkeleton';
+import { TableEmptyState } from '@/components/admin/TableEmptyState';
 
-const CustomersPage = () => {
+export const ALL_CUSTOMER_COLUMNS = [
+  { key: 'custId', label: 'CUSTOMER ID' },
+  { key: 'name', label: 'CUSTOMER NAME' },
+  { key: 'email', label: 'EMAIL ADDRESS' },
+  { key: 'phone', label: 'PHONE NUMBER' },
+  { key: 'date', label: 'REPORTED DATE' },
+  { key: 'status', label: 'STATUS' },
+  { key: 'actions', label: 'ACTIONS' },
+];
+
+export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [showFilters, setShowFilters] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+    () => new Set(ALL_CUSTOMER_COLUMNS.map(c => c.key))
+  );
+
+  const toggleColumn = (key: string) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size > 1) {
+          next.delete(key);
+        } else {
+          toast.info("At least one column must remain visible");
+        }
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const selectAllColumns = () => {
+    if (visibleColumns.size === ALL_CUSTOMER_COLUMNS.length) {
+      setVisibleColumns(new Set(['custId', 'name', 'phone', 'status', 'actions']));
+    } else {
+      setVisibleColumns(new Set(ALL_CUSTOMER_COLUMNS.map(c => c.key)));
+    }
+  };
+
   useEffect(() => {
     fetchCustomers();
-  }, [searchTerm, currentPage, sortField, sortOrder]);
+  }, [searchTerm, statusFilter, currentPage, itemsPerPage, sortField, sortOrder]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -39,16 +77,16 @@ const CustomersPage = () => {
       const res = await adminApi.getCustomers({
         search: searchTerm,
         page: currentPage,
-        limit: 12,
+        limit: itemsPerPage,
         sort: sortField,
         order: sortOrder
       });
-      setCustomers(res.data.data || []);
-      setTotalPages(res.data.pages || 1);
-      setTotalItems(res.data.total || 0);
+      setCustomers(res.data?.data || []);
+      setTotalPages(res.data?.pages || 1);
+      setTotalItems(res.data?.total || 0);
     } catch (error: any) {
       console.error(error);
-      toast.error('Failed to load consumer network');
+      toast.error('Failed to load customer list');
     } finally {
       setLoading(false);
     }
@@ -58,150 +96,177 @@ const CustomersPage = () => {
     const action = currentStatus === 'Active' ? 'BLOCK' : 'ACTIVATE';
     try {
       await adminApi.toggleCustomerStatus(id);
-      toast.success(`CUSTOMER ${action}ED`, {
-        description: `Operational status for [${name}] has been updated.`,
-      });
+      toast.success(`Customer ${name} is now ${action === 'BLOCK' ? 'Blocked' : 'Active'}`);
       fetchCustomers();
     } catch (error) {
-      toast.error('STATUS UPDATE FAILED');
+      toast.error('Failed to update customer status');
     }
   };
 
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
+  const handleExport = () => {
+    try {
+      const headers = ["Customer ID", "Name", "Email", "Phone", "Status", "Joined Date"];
+      const rows = customers.map(c => [
+        `CUST-2026-${String(c._id).slice(-4).toUpperCase()}`,
+        `"${c.name || ''}"`,
+        `"${c.email || ''}"`,
+        `"${c.phone || ''}"`,
+        c.status || 'Active',
+        new Date(c.createdAt || Date.now()).toLocaleDateString('en-IN')
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `customer_directory_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Customer network exported to CSV");
+    } catch (e) {
+      toast.error("Export failed");
     }
   };
+
+  const statusOptions = [
+    { label: 'All Status', value: 'All' },
+    { label: 'Active', value: 'Active' },
+    { label: 'Blocked', value: 'Blocked' }
+  ];
 
   return (
     <AdminWorkspace>
+      {/* Enterprise Header */}
       <AdminHeader 
-        title="Consumer"
-        secondTitle="Network"
-        subtitle="Global Customer Intelligence & Lifecycle Hub"
+        icon={Users}
+        title="Customer Directory & Network Register"
+        subtitle="Manage registered buyers, contact information, delivery profiles & store access status"
+        actionLabel="New Entry"
+        actionHref="/customers"
+        actionIcon={Plus}
+        onExport={handleExport}
       />
 
-      <AdminStats stats={[
-        { label: 'Total Base', value: totalItems, icon: Users, color: 'bg-[#5f7161]' },
-        { label: 'Active Nodes', value: customers.filter(c => c.status === 'Active').length, icon: Activity, color: 'bg-[#8ba190]' },
-        { label: 'Suspended', value: customers.filter(c => c.status === 'Blocked').length, icon: ShieldAlert, color: 'bg-[#d49a68]' },
-        { label: 'Growth Pulse', value: '+12%', icon: ArrowUp, color: 'bg-[#4a554b]' },
-      ]} />
-
-      <AdminSearch 
-        searchTerm={searchTerm}
-        onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        placeholder="Search Identity, Email or Phone..."
-      />
-
+      {/* COMPACT SINGLE-VALUE GRID TABLE WITH 1PX BORDERS */}
       <AdminTable>
-        <div className="w-full">
-          {loading ? (
-            <div className="py-20 flex items-center justify-center"><LogoLoader /></div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#5f7161] text-white">
-                    <th onClick={() => handleSort('name')} className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-left cursor-pointer group/h">
-                      <div className="flex items-center gap-2">
-                        Identity Label
-                        <span className={`transition-all ${sortField === 'name' ? 'opacity-100' : 'opacity-0 group-hover/h:opacity-50'}`}>
-                          {sortField === 'name' && sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                        </span>
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-left">Contact Node</th>
-                    <th onClick={() => handleSort('createdAt')} className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-center cursor-pointer group/h">
-                      <div className="flex items-center justify-center gap-2">
-                        Synchronization Date
-                        <span className={`transition-all ${sortField === 'createdAt' ? 'opacity-100' : 'opacity-0 group-hover/h:opacity-50'}`}>
-                          {sortField === 'createdAt' && sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                        </span>
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-center">Status Pulse</th>
-                    <th className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">Operational Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100/50">
-                  {customers.length > 0 ? customers.map((c) => (
-                    <tr key={c._id} className="group transition-all duration-300 hover:bg-white/80 relative">
-                      <td className="px-6 py-4 text-left relative">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#e7ab79] scale-y-0 group-hover:scale-y-100 transition-transform origin-top duration-300" />
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-[#fcfcfb] border border-[#f1f1ee] flex items-center justify-center text-[#5f7161] font-black text-xs shadow-sm group-hover:shadow-md transition-all">
-                            {c.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="space-y-0.5">
-                            <p className="text-[11px] font-black text-[#4a554b] leading-tight group-hover:text-[#5f7161] transition-colors uppercase italic">{c.name}</p>
-                            <p className="text-[8px] text-[#adb5bd] font-black uppercase tracking-widest">ID: #{c._id.slice(-6).toUpperCase()}</p>
-                          </div>
-                        </div>
+        {/* Reusable Filter Bar */}
+        <AdminSearch 
+          searchTerm={searchTerm}
+          onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
+          statusFilter={statusFilter}
+          onStatusChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+          statusOptions={statusOptions}
+          placeholder="Search customer ID, name, email, phone number..."
+          totalCount={totalItems}
+          columns={ALL_CUSTOMER_COLUMNS}
+          visibleColumnKeys={visibleColumns}
+          onToggleColumn={toggleColumn}
+          onSelectAllColumns={selectAllColumns}
+        />
+
+        {/* Data Table */}
+        <div className="w-full border-t border-[#e5e7eb] overflow-x-auto relative">
+          <table className="ecom-table">
+            <thead className="ecom-thead">
+              <tr>
+                {visibleColumns.has('custId') && <th className="ecom-th">CUSTOMER ID</th>}
+                {visibleColumns.has('name') && <th className="ecom-th">CUSTOMER NAME</th>}
+                {visibleColumns.has('email') && <th className="ecom-th">EMAIL ADDRESS</th>}
+                {visibleColumns.has('phone') && <th className="ecom-th">PHONE NUMBER</th>}
+                {visibleColumns.has('date') && <th className="ecom-th">REPORTED DATE</th>}
+                {visibleColumns.has('status') && <th className="ecom-th text-center">STATUS</th>}
+                {visibleColumns.has('actions') && <th className="ecom-th text-center">ACTIONS</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <TableSkeleton rows={8} cols={visibleColumns.size || 7} />
+              ) : customers.length > 0 ? (
+                customers.map((c) => (
+                  <tr key={c._id} className="ecom-tr">
+                    {visibleColumns.has('custId') && (
+                      <td className="ecom-td font-mono font-medium text-slate-700 text-xs">
+                        CUST-2026-{String(c._id).slice(-4).toUpperCase()}
                       </td>
-                      <td className="px-6 py-4 text-left">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-[#5f7161]">
-                            <Mail size={12} className="text-[#adb5bd]" /> {c.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-[#8b968c]">
-                            <Phone size={12} className="text-[#adb5bd]" /> {c.phone}
-                          </div>
-                        </div>
+                    )}
+                    {visibleColumns.has('name') && (
+                      <td className="ecom-td font-medium text-slate-900">
+                        {c.name}
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-[10px] font-black text-[#4a554b] uppercase italic flex items-center gap-2">
-                            <Calendar size={12} className="text-[#e7ab79]" /> {new Date(c.createdAt).toLocaleDateString()}
-                          </span>
-                          <span className="text-[8px] text-[#adb5bd] font-black uppercase tracking-widest">{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
+                    )}
+                    {visibleColumns.has('email') && (
+                      <td className="ecom-td text-slate-600 font-normal">
+                        {c.email || '—'}
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all ${
-                          c.status === 'Blocked' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-green-50 text-green-600 border-green-100'
+                    )}
+                    {visibleColumns.has('phone') && (
+                      <td className="ecom-td text-slate-600 font-mono text-xs">
+                        {c.phone || '—'}
+                      </td>
+                    )}
+                    {visibleColumns.has('date') && (
+                      <td className="ecom-td text-slate-500 font-medium text-xs">
+                        {new Date(c.createdAt).toLocaleDateString('en-IN')}
+                      </td>
+                    )}
+                    {visibleColumns.has('status') && (
+                      <td className="ecom-td text-center">
+                        <span className={`badge-status ${
+                          c.status === 'Blocked' ? 'badge-status-rose' : 'badge-status-green'
                         }`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${c.status === 'Blocked' ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
-                          {c.status || 'Active'}
-                        </div>
+                          {c.status === 'Blocked' ? 'BLOCKED' : 'ACTIVE'}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
+                    )}
+                    {visibleColumns.has('actions') && (
+                      <td className="ecom-td text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
                             onClick={() => handleToggleStatus(c._id, c.name, c.status)}
-                            className={`p-2.5 rounded-full transition-all active:scale-90 shadow-sm hover:shadow-md ${
-                              c.status === 'Blocked' ? 'bg-green-50 text-green-600 hover:bg-green-600 hover:text-white' : 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white'
-                            }`}
-                            title={c.status === 'Blocked' ? 'Activate Node' : 'Suspend Node'}
+                            title={c.status === 'Blocked' ? 'Unblock Customer' : 'Block Customer'}
+                            className={`action-btn ${c.status === 'Blocked' ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-400 hover:text-rose-600'}`}
                           >
-                            {c.status === 'Blocked' ? <UserCheck size={16} /> : <UserMinus size={16} />}
+                            {c.status === 'Blocked' ? <Unlock size={13} /> : <Lock size={13} />}
                           </button>
                         </div>
                       </td>
-                    </tr>
-                  )) : <tr><td colSpan={10} className="py-20 text-center text-[12px] font-black uppercase text-[#8b968c] tracking-[0.4em]">Consumer Ledger Empty</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    )}
+                  </tr>
+                ))
+              ) : (
+                <TableEmptyState 
+                  colSpan={visibleColumns.size || 7}
+                  title="No customer accounts found"
+                  description={
+                    searchTerm || statusFilter !== 'All'
+                      ? "No customer accounts match your search parameters or active status filter. Try clearing filters."
+                      : "No customer accounts have registered or been added yet."
+                  }
+                  hasFilters={Boolean(searchTerm || statusFilter !== 'All')}
+                  onResetFilters={() => {
+                    setSearchTerm('');
+                    setStatusFilter('All');
+                    setCurrentPage(1);
+                  }}
+                  actionLabel="Add Customer"
+                  actionHref="/customers/add"
+                />
+              )}
+            </tbody>
+          </table>
         </div>
 
+        {/* Enterprise Pagination Stepper */}
         <AdminPagination 
           currentPage={currentPage}
           totalPages={totalPages}
           totalItems={totalItems}
-          itemsPerPage={12}
+          itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
-          label="consumers"
+          onItemsPerPageChange={(limit) => { setItemsPerPage(limit); setCurrentPage(1); }}
+          label="customers"
         />
       </AdminTable>
     </AdminWorkspace>
   );
-};
-
-export default CustomersPage;
+}

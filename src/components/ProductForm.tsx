@@ -6,10 +6,29 @@ import * as Yup from 'yup';
 import { 
   Upload, X, Loader2, ArrowLeft, Plus, Trash2, ShieldCheck, 
   Package, Layers, Check, ChevronLeft, ChevronRight, ChevronDown, Image as ImageIcon,
-  Tag, Info, DollarSign, Calendar, Activity, Database, AlertCircle
+  Tag, Info, DollarSign, Calendar, Activity, Database, AlertCircle,
+  Video, Film, ExternalLink, Sparkles, Clock, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+
+const InstagramIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
 
 interface ProductFormProps {
   initialData?: any;
@@ -19,9 +38,9 @@ interface ProductFormProps {
 }
 
 const validationSchema = Yup.object({
-  name: Yup.string().required('Product Name is required').min(3, 'Name too short'),
+  name: Yup.string().required('Product title is required').min(2, 'Name too short'),
   category: Yup.string().required('Category is required'),
-  shortDescription: Yup.string().required('Short description is required').max(200, 'Keep it short'),
+  shortDescription: Yup.string().required('Short summary is required').max(300, 'Keep it concise'),
   status: Yup.string().oneOf(['Active', 'Inactive']),
   variants: Yup.array().of(
     Yup.object({
@@ -29,10 +48,20 @@ const validationSchema = Yup.object({
       sellingPrice: Yup.number().required('Price is required').min(0, 'Invalid price'),
       stock: Yup.number().required('Stock is required').min(0, 'Invalid stock')
     })
-  ).min(1, 'At least one size required')
+  ).min(1, 'At least one size variant is required')
 });
 
-const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormProps) => {
+const FLAVOR_PRESETS = [
+  'Classic Salted',
+  'Spicy Masala',
+  'Sweet Jaggery (Upperi)',
+  'Pepper Salt',
+  'Peri Peri',
+  'Ripe Banana (Sweet)',
+  'Tapioca Crisps'
+];
+
+export const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormProps) => {
   const router = useRouter();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -46,11 +75,14 @@ const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormPr
       shortDescription: '',
       fullDescription: '',
       ingredients: '',
-      shelfLife: '',
+      shelfLife: '6 Months from Mfg Date',
       manufacturingDate: '',
       expiryDate: '',
+      flavor: '',
+      instagramVideoUrl: '',
+      videoUrl: '',
       status: 'Active',
-      variants: [{ name: '', unit: 'g', sellingPrice: '', stock: '0' }]
+      variants: [{ name: '200', unit: 'g', sellingPrice: '', stock: '50' }]
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -61,18 +93,17 @@ const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormPr
       });
       data.append('variants', JSON.stringify(values.variants));
       
-      // Identify existing images (strings) vs new files (blobs)
       const existingImages = previews.filter(p => !p.startsWith('blob:'));
       data.append('existingImages', JSON.stringify(existingImages));
       
       selectedFiles.forEach(file => data.append('images', file));
 
       try {
-        const response = await onSubmit(data);
-        toast.success('Product saved successfully');
+        await onSubmit(data);
+        toast.success('Product SKU saved successfully');
         router.push('/products');
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || 'Failed to save product. Please check all fields.';
+        const errorMessage = error.response?.data?.message || 'Failed to save product. Please check required fields.';
         toast.error(errorMessage);
         console.error('Save Error:', error);
       } finally {
@@ -130,269 +161,574 @@ const ProductForm = ({ initialData, categories, onSubmit, title }: ProductFormPr
     setPreviews(newPreviews);
   };
 
-  const titleWords = title.split(' ');
-  const firstHalf = titleWords.slice(0, Math.ceil(titleWords.length / 2)).join(' ');
-  const secondHalf = titleWords.slice(Math.ceil(titleWords.length / 2)).join(' ');
-
-  const inputContainerClass = (name: string) => `bg-[#fcfcfb] border rounded-full px-6 py-3.5 focus-within:border-[#5f7161] focus-within:bg-white transition-all shadow-sm flex items-center gap-3 ${
-    formik.touched[name as keyof typeof formik.values] && formik.errors[name as keyof typeof formik.values] ? 'border-red-300 bg-red-50/10' : 'border-[#f1f1ee]'
-  }`;
-  
-  const textareaContainerClass = (name: string) => `bg-[#fcfcfb] border rounded-2xl px-6 py-4 focus-within:border-[#5f7161] focus-within:bg-white transition-all shadow-sm ${
-    formik.touched[name as keyof typeof formik.values] && formik.errors[name as keyof typeof formik.values] ? 'border-red-300 bg-red-50/10' : 'border-[#f1f1ee]'
-  }`;
-
-  const labelClass = "text-[9px] font-black uppercase text-[#8b968c] tracking-widest ml-1 flex items-center gap-2 mb-2";
-  const inputBase = "w-full bg-transparent text-[11px] font-bold outline-none placeholder:text-[#adb5bd] text-[#4a554b]";
+  // Derived stock count
+  const totalStockCount = formik.values.variants.reduce((acc, v) => acc + (Number(v.stock) || 0), 0);
 
   return (
     <FormikProvider value={formik}>
-      <div className="w-full space-y-8 animate-in fade-in duration-500 pb-20">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#f1f1ee] pb-6">
-          <div className="flex items-center gap-6">
+      <div className="w-full space-y-5 pb-20 font-sans text-slate-800">
+        
+        {/* Top Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#e5e7eb]">
+          <div className="flex items-center gap-3">
             <button 
+              type="button"
               onClick={() => router.back()} 
-              className="w-10 h-10 flex items-center justify-center bg-white border border-[#f1f1ee] rounded-full text-[#5f7161] hover:bg-[#fcfcfb] hover:shadow-md transition-all shadow-sm"
+              className="p-2 bg-white border border-slate-300 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-2xs"
+              title="Return to Catalog"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={16} />
             </button>
-            <div className="space-y-0.5">
-              <h1 className="text-2xl font-black tracking-tighter uppercase italic">
-                <span className="text-[#4a554b]">{firstHalf}</span> <span className="text-[#e7ab79]">{secondHalf}</span>
-              </h1>
-              <p className="text-[8px] font-black uppercase tracking-[0.4em]">
-                <span className="text-[#8b968c]">AKOD FOOD</span> <span className="text-[#e7ab79]">Product Management</span>
-              </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h1>
+                <span className={`badge-status ${formik.values.status === 'Active' ? 'badge-status-green' : 'badge-status-amber'}`}>
+                  {formik.values.status.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">Configure product specifications, sizes, pricing tiers & marketing reel</p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button 
+              type="button" 
+              onClick={() => router.back()} 
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              onClick={() => formik.handleSubmit()}
+              disabled={loading}
+              className="btn-primary"
+            >
+              {loading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+              <span>Save Product</span>
+            </button>
           </div>
         </div>
 
-        <form onSubmit={formik.handleSubmit} className="space-y-10">
-          <div className="bg-white border border-[#f1f1ee] rounded-xl p-10 shadow-xl space-y-12 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-[#5f7161]/5 rounded-full blur-3xl pointer-events-none -mr-48 -mt-48" />
-
-            {/* 1. Images */}
-            <div className="space-y-6 relative z-10">
-              <div className="flex items-center justify-between border-b border-[#f1f1ee] pb-4">
-                <label className="text-[10px] font-black uppercase text-[#4a554b] tracking-[0.2em] flex items-center gap-2">
-                  <ImageIcon size={14} className="text-[#e7ab79]" /> Product Images
-                </label>
-                <label className="cursor-pointer text-[9px] font-black uppercase text-[#5f7161] bg-[#5f7161]/5 px-5 py-2.5 rounded-full hover:bg-[#5f7161]/10 transition-all border border-[#5f7161]/10">
-                  Upload Images <input type="file" className="hidden" multiple onChange={handleFileChange} />
-                </label>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                {previews.map((src, idx) => (
-                  <div key={idx} className={`relative aspect-square rounded-2xl border-2 ${idx === 0 ? 'border-[#5f7161]' : 'border-[#f1f1ee]'} overflow-hidden group bg-[#fcfcfb] shadow-sm`}>
-                    <img src={src} className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-110" />
-                    {idx === 0 && (
-                      <div className="absolute top-3 left-3 bg-[#5f7161] text-white text-[7px] font-black px-2 py-1 rounded uppercase tracking-widest shadow-lg">Main Image</div>
-                    )}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-3">
-                      <div className="flex gap-2">
-                        {idx > 0 && <button type="button" onClick={() => moveImage(idx, 'left')} className="p-2 bg-white rounded-full text-[#4a554b] hover:bg-[#e7ab79] hover:text-white transition-colors shadow-lg"><ChevronLeft size={14}/></button>}
-                        {idx < previews.length - 1 && <button type="button" onClick={() => moveImage(idx, 'right')} className="p-2 bg-white rounded-full text-[#4a554b] hover:bg-[#e7ab79] hover:text-white transition-colors shadow-lg"><ChevronRight size={14}/></button>}
-                      </div>
-                      <button type="button" onClick={() => removeImage(idx)} className="p-2 bg-red-500 rounded-full text-white hover:bg-red-600 shadow-xl"><Trash2 size={14}/></button>
-                    </div>
-                  </div>
-                ))}
-                <label className="aspect-square border-2 border-dashed border-[#f1f1ee] rounded-2xl flex flex-col items-center justify-center bg-[#fcfcfb] cursor-pointer hover:border-[#5f7161] hover:bg-white transition-all group shadow-inner">
-                  <Upload size={32} className="text-[#8b968c] group-hover:text-[#5f7161] transition-all group-hover:scale-110" />
-                  <span className="text-[8px] font-black uppercase text-[#8b968c] mt-3 tracking-widest">Add More</span>
-                  <input type="file" className="hidden" multiple onChange={handleFileChange} />
-                </label>
-              </div>
-            </div>
-
-            {/* 2. Product Details */}
-            <div className="space-y-8 relative z-10 pt-4">
-              <div className="flex items-center gap-2 border-b border-[#f1f1ee] pb-4">
-                <Package size={14} className="text-[#e7ab79]" />
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a554b]">Product Details</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-2 space-y-2">
-                  <label className={labelClass}><Tag size={12} className="text-[#e7ab79]" /> Product Name</label>
-                  <div className={inputContainerClass('name')}>
-                    <input name="name" className={inputBase} placeholder="e.g. Kerala Banana Chips" value={formik.values.name} onChange={formik.handleChange} onBlur={formik.handleBlur} />
-                  </div>
-                  {formik.touched.name && formik.errors.name && <p className="text-[8px] font-black uppercase text-red-500 tracking-widest ml-4 flex items-center gap-1"><AlertCircle size={10}/> {formik.errors.name}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={labelClass}><Database size={12} className="text-[#e7ab79]" /> Category</label>
-                  <div className="relative">
-                    <select name="category" className={`${inputContainerClass('category')} w-full appearance-none cursor-pointer`} value={formik.values.category} onChange={formik.handleChange} onBlur={formik.handleBlur}>
-                      <option value="">Select Category</option>
-                      {categories.map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
-                    </select>
-                    <ChevronRight size={14} className="absolute right-6 top-1/2 -translate-y-1/2 text-[#adb5bd] rotate-90 pointer-events-none" />
-                  </div>
-                  {formik.touched.category && formik.errors.category && <p className="text-[8px] font-black uppercase text-red-500 tracking-widest ml-4 flex items-center gap-1"><AlertCircle size={10}/> {formik.errors.category}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className={labelClass}><Info size={12} className="text-[#e7ab79]" /> Sub Category</label>
-                  <div className={inputContainerClass('subCategory')}>
-                    <input name="subCategory" className={inputBase} placeholder="e.g. Spicy Snacks" value={formik.values.subCategory} onChange={formik.handleChange} />
-                  </div>
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className={labelClass}><Activity size={12} className="text-[#e7ab79]" /> Short Description</label>
-                  <div className={textareaContainerClass('shortDescription')}>
-                    <textarea name="shortDescription" className={`${inputBase} min-h-[60px] resize-none`} placeholder="Briefly describe the product..." value={formik.values.shortDescription} onChange={formik.handleChange} onBlur={formik.handleBlur} />
-                  </div>
-                  {formik.touched.shortDescription && formik.errors.shortDescription && <p className="text-[8px] font-black uppercase text-red-500 tracking-widest ml-4 flex items-center gap-1"><AlertCircle size={10}/> {formik.errors.shortDescription}</p>}
-                </div>
-                <div className="md:col-span-4 space-y-2">
-                  <label className={labelClass}><Info size={12} className="text-[#e7ab79]" /> Full Description</label>
-                  <div className={textareaContainerClass('fullDescription')}>
-                    <textarea name="fullDescription" className={`${inputBase} min-h-[100px]`} placeholder="Enter detailed product information..." value={formik.values.fullDescription} onChange={formik.handleChange} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Pricing & Sizes */}
-            <div className="space-y-6 relative z-10 pt-4">
-              <div className="flex items-center justify-between border-b border-[#f1f1ee] pb-4">
-                <div className="flex items-center gap-2">
-                  <Layers size={14} className="text-[#e7ab79]" />
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a554b]">Pricing & Sizes</h2>
-                </div>
-                <button type="button" onClick={() => formik.setFieldValue('variants', [...formik.values.variants, { name: '', unit: 'g', sellingPrice: '', stock: '0' }])} className="px-5 py-2.5 bg-[#5f7161] text-white rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-[#4d5d4f] transition-all shadow-lg flex items-center gap-2">
-                  <Plus size={14} /> Add Size
-                </button>
-              </div>
+        <form onSubmit={formik.handleSubmit}>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            
+            {/* Left / Main Column (8 cols) */}
+            <div className="lg:col-span-8 space-y-5">
               
-              <FieldArray name="variants">
-                {({ remove }) => (
-                  <div className="space-y-3">
-                    <div className="hidden md:grid grid-cols-12 gap-4 px-6 pb-2 text-[8px] font-black uppercase text-[#8b968c] tracking-widest">
-                      <div className="col-span-3">Size</div>
-                      <div className="col-span-2">Unit</div>
-                      <div className="col-span-3">Price (₹)</div>
-                      <div className="col-span-3">Stock</div>
-                      <div className="col-span-1"></div>
-                    </div>
+              {/* Card 1: Essential Information */}
+              <div className="admin-card p-5 space-y-4">
+                <div className="flex items-center gap-2 pb-2.5 border-b border-[#e5e7eb]">
+                  <div className="w-6 h-6 rounded-md bg-[#eff4f0] text-[#546b5a] flex items-center justify-center font-bold">
+                    <Package size={14} />
+                  </div>
+                  <div>
+                    <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">General Information</h2>
+                    <p className="text-[11px] text-slate-500">Product title, catalog category classification, and descriptions</p>
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
-                      {formik.values.variants.map((v: any, idx: number) => (
-                        <div key={idx} className="space-y-1">
-                          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-[#fcfcfb] p-4 md:p-2 rounded-2xl md:rounded-full border border-[#f1f1ee] items-center hover:bg-white hover:shadow-md transition-all group/item">
-                            <div className="col-span-3">
-                              <div className="bg-white border border-[#f1f1ee] rounded-full px-4 py-2 focus-within:border-[#5f7161] transition-all">
-                                <input name={`variants[${idx}].name`} className="w-full bg-transparent text-[10px] font-bold outline-none text-[#4a554b]" placeholder="e.g. 500" value={v.name} onChange={formik.handleChange} onBlur={formik.handleBlur} />
-                              </div>
-                            </div>
-                            <div className="col-span-2">
-                              <div className="bg-white border border-[#f1f1ee] rounded-full px-4 py-2 focus-within:border-[#5f7161] transition-all">
-                                <select name={`variants[${idx}].unit`} className="w-full bg-transparent text-[10px] font-bold text-[#4a554b] outline-none cursor-pointer" value={v.unit} onChange={formik.handleChange}>
-                                  <option value="g">g</option><option value="kg">kg</option><option value="pcs">pcs</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div className="col-span-3">
-                              <div className="bg-white border border-[#e7ab79]/30 rounded-full px-4 py-2 focus-within:border-[#e7ab79] transition-all flex items-center gap-2">
-                                <DollarSign size={10} className="text-[#e7ab79] shrink-0" />
-                                <input type="number" name={`variants[${idx}].sellingPrice`} className="w-full bg-transparent text-[10px] font-black outline-none text-[#4a554b]" placeholder="0.00" value={v.sellingPrice} onChange={formik.handleChange} onBlur={formik.handleBlur} />
-                              </div>
-                            </div>
-                            <div className="col-span-3">
-                              <div className="bg-white border border-[#5f7161]/30 rounded-full px-4 py-2 focus-within:border-[#5f7161] transition-all flex items-center gap-2">
-                                <Database size={10} className="text-[#5f7161] shrink-0" />
-                                <input type="number" name={`variants[${idx}].stock`} className="w-full bg-transparent text-[10px] font-black outline-none text-[#4a554b]" placeholder="0" value={v.stock} onChange={formik.handleChange} onBlur={formik.handleBlur} />
-                              </div>
-                            </div>
-                            <div className="col-span-1 flex justify-center">
-                              {formik.values.variants.length > 1 && (
-                                <button type="button" onClick={() => remove(idx)} className="p-2 text-red-400 hover:text-red-600 transition-colors">
-                                  <Trash2 size={14} />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {/* Product Name */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="admin-label">
+                      <span>Product Title</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <input 
+                      name="name" 
+                      className="admin-input" 
+                      placeholder="e.g. Classic Salted Kerala Banana Chips (Cold Pressed Coconut Oil)" 
+                      value={formik.values.name} 
+                      onChange={formik.handleChange} 
+                      onBlur={formik.handleBlur} 
+                    />
+                    {formik.touched.name && formik.errors.name && (
+                      <p className="admin-error-text">
+                        <AlertCircle size={12} /> {formik.errors.name}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Category */}
+                  <div className="space-y-1">
+                    <label className="admin-label">
+                      <span>Category</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <select 
+                      name="category" 
+                      className="admin-input admin-select bg-white cursor-pointer" 
+                      value={formik.values.category} 
+                      onChange={formik.handleChange} 
+                      onBlur={formik.handleBlur}
+                    >
+                      <option value="">Select Primary Category</option>
+                      {categories.map(cat => (
+                        <option key={cat._id} value={cat._id}>{cat.name}</option>
+                      ))}
+                    </select>
+                    {formik.touched.category && formik.errors.category && (
+                      <p className="admin-error-text">
+                        <AlertCircle size={12} /> {formik.errors.category}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Sub Category */}
+                  <div className="space-y-1">
+                    <label className="admin-label">
+                      <span>Sub-Category</span>
+                    </label>
+                    <input 
+                      name="subCategory" 
+                      className="admin-input" 
+                      placeholder="e.g. Traditional Kerala Chips" 
+                      value={formik.values.subCategory} 
+                      onChange={formik.handleChange} 
+                    />
+                  </div>
+
+                  {/* Flavor Profile */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="admin-label">
+                      <span>Flavor Profile</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Used for storefront chips filter</span>
+                    </label>
+                    <input 
+                      name="flavor" 
+                      list="flavor-suggestions"
+                      className="admin-input" 
+                      placeholder="e.g. Classic Salted, Spicy Masala, Sweet Jaggery (Upperi)" 
+                      value={formik.values.flavor} 
+                      onChange={formik.handleChange} 
+                    />
+                    <datalist id="flavor-suggestions">
+                      {FLAVOR_PRESETS.map(f => (
+                        <option key={f} value={f} />
+                      ))}
+                    </datalist>
+
+                    {/* Quick Preset Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400 font-medium">Quick suggestions:</span>
+                      {FLAVOR_PRESETS.slice(0, 4).map(f => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => formik.setFieldValue('flavor', f)}
+                          className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                            formik.values.flavor === f
+                              ? 'bg-[#eff4f0] text-[#546b5a] border-[#546b5a] font-bold'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {f}
+                        </button>
                       ))}
                     </div>
                   </div>
-                )}
-              </FieldArray>
-            </div>
 
-            {/* 4. Safety & Ingredients */}
-            <div className="space-y-8 relative z-10 pt-4">
-              <div className="flex items-center justify-between border-b border-[#f1f1ee] pb-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={14} className="text-[#e7ab79]" />
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4a554b]">Safety & Ingredients</h2>
+                  {/* Short Summary */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="admin-label">
+                      <span>Short Summary</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <textarea 
+                      name="shortDescription" 
+                      rows={2}
+                      className="admin-input resize-none" 
+                      placeholder="Crispy, golden Kerala banana chips thinly sliced from freshly harvested Nendran bananas and cooked in 100% pure cold-pressed coconut oil..." 
+                      value={formik.values.shortDescription} 
+                      onChange={formik.handleChange} 
+                      onBlur={formik.handleBlur} 
+                    />
+                    {formik.touched.shortDescription && formik.errors.shortDescription && (
+                      <p className="admin-error-text">
+                        <AlertCircle size={12} /> {formik.errors.shortDescription}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Full Detailed Description */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="admin-label">
+                      <span>Detailed Product Story</span>
+                    </label>
+                    <textarea 
+                      name="fullDescription" 
+                      rows={4}
+                      className="admin-input" 
+                      placeholder="Share the full heritage story, traditional frying technique, taste profile, and pairing recommendations..." 
+                      value={formik.values.fullDescription} 
+                      onChange={formik.handleChange} 
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <label className="text-[9px] font-black uppercase text-[#8b968c] tracking-widest">Product Status:</label>
-                  <div className="relative">
-                    <select 
-                      name="status"
-                      className="bg-[#fcfcfb] border border-[#f1f1ee] rounded-full px-5 py-1.5 text-[9px] font-black text-[#5f7161] outline-none appearance-none cursor-pointer hover:border-[#5f7161] transition-all shadow-sm pr-10"
-                      value={formik.values.status}
-                      onChange={formik.handleChange}
+              </div>
+
+              {/* Card 2: Sizes & Pricing Matrix */}
+              <div className="admin-card p-5 space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#e5e7eb]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+                      <Layers size={14} />
+                    </div>
+                    <div>
+                      <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Sizes & Pricing Matrix</h2>
+                      <p className="text-[11px] text-slate-500">Packet sizes, selling rates (₹), and current warehouse stock</p>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    onClick={() => formik.setFieldValue('variants', [
+                      ...formik.values.variants, 
+                      { name: '', unit: 'g', sellingPrice: '', stock: '50' }
+                    ])} 
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#546b5a] bg-[#eff4f0] hover:bg-[#dfebe1] border border-[#b3ccb9] rounded transition-colors"
+                  >
+                    <Plus size={13} />
+                    <span>Add Size Variant</span>
+                  </button>
+                </div>
+
+                <FieldArray name="variants">
+                  {({ remove }) => (
+                    <div className="space-y-2">
+                      <div className="hidden sm:grid grid-cols-12 gap-2.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                        <div className="col-span-3">Packet Weight / Size</div>
+                        <div className="col-span-2">Unit</div>
+                        <div className="col-span-3">Selling Price (₹)</div>
+                        <div className="col-span-3">Stock Units</div>
+                        <div className="col-span-1 text-center">Action</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {formik.values.variants.map((v: any, idx: number) => (
+                          <div 
+                            key={idx} 
+                            className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 p-2.5 bg-white rounded border border-slate-200 items-center hover:border-slate-300 transition-colors"
+                          >
+                            <div className="sm:col-span-3">
+                              <label className="sm:hidden text-[10px] font-bold text-slate-500 block mb-1">Packet Size</label>
+                              <input 
+                                name={`variants[${idx}].name`} 
+                                className="admin-input" 
+                                placeholder="e.g. 200, 500, 1000" 
+                                value={v.name} 
+                                onChange={formik.handleChange} 
+                                onBlur={formik.handleBlur} 
+                              />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                              <label className="sm:hidden text-[10px] font-bold text-slate-500 block mb-1">Unit</label>
+                              <select 
+                                name={`variants[${idx}].unit`} 
+                                className="admin-input admin-select bg-white cursor-pointer" 
+                                value={v.unit} 
+                                onChange={formik.handleChange}
+                              >
+                                <option value="g">grams (g)</option>
+                                <option value="kg">kg</option>
+                                <option value="pcs">pcs</option>
+                                <option value="pack">pack</option>
+                              </select>
+                            </div>
+
+                            <div className="sm:col-span-3">
+                              <label className="sm:hidden text-[10px] font-bold text-slate-500 block mb-1">Selling Price (₹)</label>
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                                <input 
+                                  type="number" 
+                                  name={`variants[${idx}].sellingPrice`} 
+                                  className="admin-input pl-6 font-semibold" 
+                                  placeholder="0.00" 
+                                  value={v.sellingPrice} 
+                                  onChange={formik.handleChange} 
+                                  onBlur={formik.handleBlur} 
+                                />
+                              </div>
+                            </div>
+
+                            <div className="sm:col-span-3">
+                              <label className="sm:hidden text-[10px] font-bold text-slate-500 block mb-1">Stock Units</label>
+                              <input 
+                                type="number" 
+                                name={`variants[${idx}].stock`} 
+                                className="admin-input font-semibold" 
+                                placeholder="0" 
+                                value={v.stock} 
+                                onChange={formik.handleChange} 
+                                onBlur={formik.handleBlur} 
+                              />
+                            </div>
+
+                            <div className="sm:col-span-1 flex justify-center">
+                              {formik.values.variants.length > 1 ? (
+                                <button 
+                                  type="button" 
+                                  onClick={() => remove(idx)} 
+                                  title="Delete Size Variant"
+                                  className="action-btn action-btn-danger text-slate-400"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              ) : (
+                                <span className="text-xs text-slate-300 font-bold">—</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </FieldArray>
+              </div>
+
+              {/* Card 3: Product Photography */}
+              <div className="admin-card p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#e5e7eb]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-[#eff4f0] text-[#546b5a] flex items-center justify-center font-bold">
+                      <ImageIcon size={14} />
+                    </div>
+                    <div>
+                      <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Product Photography</h2>
+                      <p className="text-[11px] text-slate-500">Upload pack shots, texture close-ups, and ingredient highlights</p>
+                    </div>
+                  </div>
+
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded border border-slate-300 transition-colors shadow-2xs self-start sm:self-auto">
+                    <Upload size={13} />
+                    <span>Upload Images</span>
+                    <input type="file" className="hidden" multiple accept="image/*" onChange={handleFileChange} />
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {previews.map((src, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`relative aspect-square rounded-md border ${
+                        idx === 0 ? 'border-[#546b5a] ring-1 ring-[#546b5a]' : 'border-slate-200'
+                      } overflow-hidden group bg-slate-50 p-1.5 shadow-2xs flex items-center justify-center`}
                     >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                    <ChevronDown size={12} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5f7161] pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div className="md:col-span-2 space-y-2">
-                  <label className={labelClass}><Activity size={12} className="text-[#e7ab79]" /> Ingredients</label>
-                  <div className={textareaContainerClass('ingredients')}>
-                    <textarea name="ingredients" className={`${inputBase} min-h-[100px] resize-none`} placeholder="List all ingredients..." value={formik.values.ingredients} onChange={formik.handleChange} />
-                  </div>
-                </div>
-                <div className="space-y-8 md:col-span-2">
-                  <div className="space-y-2">
-                    <label className={labelClass}><Calendar size={12} className="text-[#e7ab79]" /> Shelf Life</label>
-                    <div className={inputContainerClass('shelfLife')}>
-                      <input name="shelfLife" className={inputBase} placeholder="e.g. 6 Months" value={formik.values.shelfLife} onChange={formik.handleChange} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className={labelClass}>Manufacturing Date</label>
-                      <div className={inputContainerClass('manufacturingDate')}>
-                        <input type="date" name="manufacturingDate" className={inputBase} value={formik.values.manufacturingDate} onChange={formik.handleChange} />
+                      <img src={src} className="w-full h-full object-contain" alt="" />
+                      
+                      {idx === 0 && (
+                        <span className="absolute top-1.5 left-1.5 bg-[#546b5a] text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-2xs uppercase">
+                          Cover
+                        </span>
+                      )}
+
+                      {/* Hover Reorder/Delete */}
+                      <div className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
+                        <div className="flex gap-1">
+                          {idx > 0 && (
+                            <button 
+                              type="button" 
+                              onClick={() => moveImage(idx, 'left')} 
+                              className="p-1 bg-white text-slate-800 rounded hover:bg-slate-100 shadow-2xs"
+                              title="Move Left"
+                            >
+                              <ChevronLeft size={13}/>
+                            </button>
+                          )}
+                          {idx < previews.length - 1 && (
+                            <button 
+                              type="button" 
+                              onClick={() => moveImage(idx, 'right')} 
+                              className="p-1 bg-white text-slate-800 rounded hover:bg-slate-100 shadow-2xs"
+                              title="Move Right"
+                            >
+                              <ChevronRight size={13}/>
+                            </button>
+                          )}
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => removeImage(idx)} 
+                          className="p-1 bg-rose-600 text-white rounded hover:bg-rose-700 shadow-2xs"
+                          title="Remove Image"
+                        >
+                          <Trash2 size={13}/>
+                        </button>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className={labelClass}>Expiry Date</label>
-                      <div className={inputContainerClass('expiryDate')}>
-                        <input type="date" name="expiryDate" className={inputBase} value={formik.values.expiryDate} onChange={formik.handleChange} />
-                      </div>
-                    </div>
-                  </div>
+                  ))}
+
+                  <label className="aspect-square border border-dashed border-slate-300 hover:border-[#546b5a] rounded-md flex flex-col items-center justify-center bg-slate-50/50 hover:bg-[#eff4f0]/20 cursor-pointer transition-colors p-2 text-center group">
+                    <Upload size={18} className="text-slate-400 group-hover:text-[#546b5a] transition-colors" />
+                    <span className="text-[11px] font-semibold text-slate-600 group-hover:text-[#546b5a] mt-1">Add Image</span>
+                    <span className="text-[9px] text-slate-400">PNG, JPG, WebP</span>
+                    <input type="file" className="hidden" multiple accept="image/*" onChange={handleFileChange} />
+                  </label>
                 </div>
               </div>
+
+              {/* Card 4: Instagram Reel Marketing Showcase */}
+              <div className="admin-card p-5 space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#e5e7eb]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center font-bold">
+                      <InstagramIcon size={14} />
+                    </div>
+                    <div>
+                      <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Instagram Reel Showcase</h2>
+                      <p className="text-[11px] text-slate-500">Embed public Instagram Reel crunch demonstration into storefront</p>
+                    </div>
+                  </div>
+
+                  {formik.values.instagramVideoUrl ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      REEL LINKED
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-slate-400">Optional</span>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="admin-label !mb-0">
+                      <span>Instagram Video / Reel URL</span>
+                    </label>
+                    {formik.values.instagramVideoUrl && (
+                      <a 
+                        href={formik.values.instagramVideoUrl} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-[11px] font-semibold text-[#dc2743] hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink size={12} /> Test Reel Link
+                      </a>
+                    )}
+                  </div>
+                  <input 
+                    name="instagramVideoUrl" 
+                    className="admin-input" 
+                    placeholder="https://www.instagram.com/reel/C..." 
+                    value={formik.values.instagramVideoUrl} 
+                    onChange={formik.handleChange} 
+                  />
+                  <p className="admin-helper-text">
+                    Copy the URL of your reel on @akodfood. Store visitors can click to play the crunchy sound demo directly.
+                  </p>
+                </div>
+              </div>
+
             </div>
 
-            {/* Bottom Actions */}
-            <div className="pt-12 border-t border-[#f1f1ee] flex flex-col sm:flex-row justify-end gap-5 relative z-10">
-              <button 
-                type="button" onClick={() => router.back()} 
-                className="px-10 py-4 border border-[#f1f1ee] rounded-full text-[10px] font-black uppercase tracking-widest text-[#8b968c] hover:bg-[#fcfcfb] transition-all"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" disabled={loading || !formik.isValid} 
-                className="px-14 py-4 bg-[#5f7161] text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#4d5d4f] transition-all shadow-xl shadow-[#5f7161]/20 disabled:opacity-50"
-              >
-                {loading ? <Loader2 className="animate-spin" size={16} /> : <><Check size={16} /> Save Product</>}
-              </button>
+            {/* Right / Sidebar Column (4 cols) */}
+            <div className="lg:col-span-4 space-y-5">
+              
+              {/* Sidebar Card 1: Catalog Status & Publishing */}
+              <div className="admin-card p-4 space-y-3.5">
+                <div className="flex items-center gap-2 pb-2 border-b border-[#e5e7eb]">
+                  <div className="w-5 h-5 rounded bg-slate-100 text-slate-600 flex items-center justify-center font-bold">
+                    <Activity size={12} />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Publishing Status</h3>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="admin-label">Visibility on Storefront</label>
+                  <select 
+                    name="status"
+                    className="admin-input admin-select bg-white cursor-pointer"
+                    value={formik.values.status}
+                    onChange={formik.handleChange}
+                  >
+                    <option value="Active">Active — Publicly Available</option>
+                    <option value="Inactive">Inactive — Hidden from Catalog</option>
+                  </select>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                  <span>Total Stock Available:</span>
+                  <span className={`font-mono font-bold ${totalStockCount > 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                    {totalStockCount} units
+                  </span>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full btn-primary !py-2 justify-center"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+                  <span>Save Product SKU</span>
+                </button>
+              </div>
+
+              {/* Sidebar Card 2: Quality, Ingredients & Dates */}
+              <div className="admin-card p-4 space-y-3.5">
+                <div className="flex items-center gap-2 pb-2 border-b border-[#e5e7eb]">
+                  <div className="w-5 h-5 rounded bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold">
+                    <ShieldCheck size={12} />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Quality & Shelf Life</h3>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="admin-label">Ingredients</label>
+                    <textarea 
+                      name="ingredients" 
+                      rows={2}
+                      className="admin-input resize-none" 
+                      placeholder="e.g. Raw Nendran Bananas, Pure Coconut Oil, Rock Salt..." 
+                      value={formik.values.ingredients} 
+                      onChange={formik.handleChange} 
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="admin-label">Shelf Life</label>
+                    <input 
+                      name="shelfLife" 
+                      className="admin-input" 
+                      placeholder="e.g. 6 Months from Mfg Date" 
+                      value={formik.values.shelfLife} 
+                      onChange={formik.handleChange} 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="admin-label">Mfg Date</label>
+                      <input 
+                        type="date" 
+                        name="manufacturingDate" 
+                        className="admin-input text-xs" 
+                        value={formik.values.manufacturingDate} 
+                        onChange={formik.handleChange} 
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="admin-label">Expiry Date</label>
+                      <input 
+                        type="date" 
+                        name="expiryDate" 
+                        className="admin-input text-xs" 
+                        value={formik.values.expiryDate} 
+                        onChange={formik.handleChange} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
+
           </div>
         </form>
+
       </div>
     </FormikProvider>
   );

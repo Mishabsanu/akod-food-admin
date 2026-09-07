@@ -1,59 +1,83 @@
 "use client";
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, Plus, Download } from 'lucide-react';
 
 interface AdminHeaderProps {
   title: string;
-  secondTitle: string;
   subtitle: string;
+  icon?: LucideIcon;
   actionLabel?: string;
   actionHref?: string;
   onClick?: () => void;
   actionIcon?: LucideIcon;
+  onExport?: () => void;
   children?: React.ReactNode;
   className?: string;
 }
 
 export const AdminHeader = ({ 
   title, 
-  secondTitle, 
   subtitle, 
+  icon: TitleIcon,
   actionLabel, 
   actionHref, 
   onClick,
-  actionIcon: Icon,
+  actionIcon: Icon = Plus,
+  onExport,
   children,
   className = ""
 }: AdminHeaderProps) => {
-  const buttonClass = "bg-[#5f7161] text-white px-8 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-[#4d5d4f] hover:scale-105 transition-all shadow-xl shadow-[#5f7161]/20 flex items-center gap-3 active:scale-95";
-
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-6 ${className}`}>
-      <div className="flex items-center gap-4">
-        <div className="bg-white p-1.5 rounded-lg shadow-sm border border-gray-100 hidden sm:block">
-          <Image src="/logo.png" alt="AKOD" width={48} height={48} className="w-12 h-12 object-contain" />
-        </div>
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-black tracking-tighter uppercase italic">
-            <span className="text-[#4a554b]">{title}</span> <span className="text-[#e7ab79]">{secondTitle}</span>
+    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 ${className}`}>
+      <div>
+        <div className="flex items-center gap-2">
+          {TitleIcon && (
+            <TitleIcon className="w-4 h-4 text-[#546b5a] shrink-0" />
+          )}
+          <h1 className="text-base font-semibold text-[#1f2937] tracking-tight">
+            {title}
           </h1>
-          <p className="text-[8px] font-black uppercase tracking-[0.4em]">
-            <span className="text-[#8b968c]">{subtitle}</span> <span className="text-[#e7ab79]">Admin Panel</span>
-          </p>
         </div>
+        <p className="text-[11.5px] text-[#6b7280] mt-0.5">
+          {subtitle}
+        </p>
       </div>
-      <div className="flex items-center gap-4">
+
+      <div className="flex items-center space-x-2 self-end sm:self-auto flex-wrap">
         {children}
+
+        {/* Export Button */}
+        {onExport && (
+          <button 
+            type="button"
+            onClick={onExport} 
+            className="inline-flex items-center space-x-1.5 border border-[#cbd5e1] text-[#374151] hover:bg-[#f9fafb] rounded px-3 py-1.5 font-normal text-xs shadow-2xs cursor-pointer transition bg-white"
+            title="Export data to CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-[#6b7280]" />
+            <span>Export</span>
+          </button>
+        )}
+
+        {/* Primary Action Button */}
         {actionLabel && actionHref && (
-          <Link href={actionHref} className={buttonClass}>
-            {Icon && <Icon size={16} />} {actionLabel}
+          <Link 
+            href={actionHref} 
+            className="inline-flex items-center space-x-1.5 bg-[#546b5a] hover:bg-[#415446] text-white rounded px-3.5 py-1.5 font-medium text-xs shadow-xs cursor-pointer transition"
+          >
+            {Icon && <Icon className="w-4 h-4" />}
+            <span>{actionLabel}</span>
           </Link>
         )}
         {actionLabel && onClick && !actionHref && (
-          <button onClick={onClick} className={buttonClass}>
-            {Icon && <Icon size={16} />} {actionLabel}
+          <button 
+            type="button"
+            onClick={onClick} 
+            className="inline-flex items-center space-x-1.5 bg-[#546b5a] hover:bg-[#415446] text-white rounded px-3.5 py-1.5 font-medium text-xs shadow-xs cursor-pointer transition"
+          >
+            {Icon && <Icon className="w-4 h-4" />}
+            <span>{actionLabel}</span>
           </button>
         )}
       </div>

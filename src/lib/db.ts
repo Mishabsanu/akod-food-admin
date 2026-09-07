@@ -9,7 +9,7 @@ declare global {
   var mongooseAdminCache: MongooseCache | undefined;
 }
 
-let cached: MongooseCache = global.mongooseAdminCache || { conn: null, promise: null };
+const cached: MongooseCache = global.mongooseAdminCache || { conn: null, promise: null };
 
 if (!global.mongooseAdminCache) {
   global.mongooseAdminCache = cached;

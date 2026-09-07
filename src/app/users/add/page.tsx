@@ -11,13 +11,13 @@ export default function AddUserPage() {
   const handleSubmit = async (data: any) => {
     try {
       await authApi.register(data);
-      toast.success('Authority Successfully Established');
+      toast.success('Admin user created successfully');
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Failed to initialize authority';
+      const msg = error.response?.data?.message || 'Failed to create user';
       toast.error(msg);
       throw error;
     }
   };
 
-  return <UserForm title="Initialize Authority" onSubmit={handleSubmit} />;
+  return <UserForm title="Add Team Member" onSubmit={handleSubmit} />;
 }

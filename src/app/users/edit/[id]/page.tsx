@@ -18,7 +18,7 @@ export default function EditUserPage() {
     const fetchUser = async () => {
       try {
         const res = await adminApi.getUser(id);
-        const userData = res.data.data || res.data;
+        const userData = res.data?.data || res.data;
         if (userData) {
           setUser(userData);
         } else {
@@ -48,14 +48,10 @@ export default function EditUserPage() {
   };
 
   if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-[#fcfcfb]">
+    <div className="min-h-[50vh] flex items-center justify-center">
       <LogoLoader />
     </div>
   );
 
-  return (
-    <div className="p-4 lg:p-6">
-      <UserForm title="Edit User" initialData={user} onSubmit={handleSubmit} />
-    </div>
-  );
+  return <UserForm title="Edit Team Member" initialData={user} onSubmit={handleSubmit} />;
 }

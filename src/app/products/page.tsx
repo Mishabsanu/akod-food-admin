@@ -2,212 +2,388 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  Plus, Search, Edit2, Trash2, Package2, Layers, 
-  ChevronLeft, ChevronRight, ListFilter, LayoutGrid, 
-  List, Activity, Scale, Star, ArrowUp, ArrowDown, Check, Eye,
-  ChevronDown, MapPin, Leaf, Boxes
+  Plus, Edit2, Trash2, Package2, ChevronDown, ChevronRight,
+  CornerDownRight, ChevronsUpDown, Layers
 } from 'lucide-react';
 import LogoLoader from '@/components/LogoLoader';
 import { adminApi } from '@/lib/api';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-// Reusable Atmospheric Components
 import { AdminWorkspace } from '@/components/admin/AdminWorkspace';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminSearch } from '@/components/admin/AdminSearch';
 import { AdminTable } from '@/components/admin/AdminTable';
 import { AdminPagination } from '@/components/admin/AdminPagination';
+import { TableSkeleton } from '@/components/admin/TableSkeleton';
+import { TableEmptyState } from '@/components/admin/TableEmptyState';
 
-const ProductRow = ({ p, handleDelete }: any) => {
-  const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
-  const v = p.variants?.[selectedVariantIdx] || { name: 'Standard', unit: '', sellingPrice: p.price || 0, stock: p.stock || 0 };
+export const ALL_PRODUCT_COLUMNS = [
+  { key: 'skuId', label: 'TRANSACTION ID' },
+  { key: 'name', label: 'PRODUCT NAME' },
+  { key: 'category', label: 'CATEGORY' },
+  { key: 'flavor', label: 'FLAVOR PROFILE' },
+  { key: 'variant', label: 'VARIANT / SIZE' },
+  { key: 'price', label: 'PRICE' },
+  { key: 'stock', label: 'STOCK LEVEL' },
+  { key: 'status', label: 'STATUS' },
+  { key: 'actions', label: 'ACTIONS' },
+];
+
+const ProductRow = ({ 
+  p, 
+  handleDelete,
+  isExpanded,
+  onToggleExpand,
+  visibleColumns
+}: {
+  p: any;
+  handleDelete: (id: string, name: string) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  visibleColumns: Set<string>;
+}) => {
+  const variants = p.variants || [];
+  const hasVariants = variants.length > 0;
+
+  // Aggregate statistics across variants
+  const totalStock = hasVariants 
+    ? variants.reduce((acc: number, v: any) => acc + (Number(v.stock) || 0), 0)
+    : Number(p.stock || 0);
+
+  const prices = hasVariants 
+    ? variants.map((v: any) => Number(v.sellingPrice) || 0)
+    : [Number(p.price || 0)];
+
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceDisplay = minPrice === maxPrice 
+    ? `₹${minPrice.toLocaleString('en-IN')}` 
+    : `₹${minPrice.toLocaleString('en-IN')} – ₹${maxPrice.toLocaleString('en-IN')}`;
+
+  const isOutOfStock = totalStock <= 0;
+  const isLowStock = totalStock > 0 && totalStock < 15;
+
+  // Format SKU ID matching enterprise format: SKU-2026-XXXX
+  const skuId = `SKU-2026-${String(p._id).slice(-4).toUpperCase()}`;
 
   return (
-    <tr className="group transition-all duration-300 hover:bg-white/80 relative">
-      <td className="px-6 py-3 text-left relative">
-        <div className={`absolute left-0 top-0 bottom-0 w-1 ${p.status === 'Inactive' ? 'bg-red-400' : 'bg-[#e7ab79]'} scale-y-0 group-hover:scale-y-100 transition-transform origin-top duration-300`} />
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full overflow-hidden border border-[#f1f1ee] bg-white flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-500">
-            <img src={p.images?.[0] || 'https://res.cloudinary.com/dwkom79iv/image/upload/v1715096530/akod-food/placeholder.png'} className="w-full h-full object-contain" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2">
-              <p className="text-[11px] font-black text-[#4a554b] leading-tight group-hover:text-[#5f7161] transition-colors uppercase italic">{p.name}</p>
-              <span className={`px-2 py-0.5 rounded-full text-[6px] font-black uppercase tracking-widest ${p.status === 'Inactive' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                {p.status || 'Active'}
+    <>
+      {/* Parent Product Row */}
+      <tr className={`ecom-tr ${isExpanded ? 'bg-[#eff4f0]/40' : ''}`}>
+        {/* Transaction / SKU ID with Expand/Collapse Tree Toggle */}
+        {visibleColumns.has('skuId') && (
+          <td className="ecom-td">
+            <div className="flex items-center gap-1.5 font-mono text-xs">
+              {hasVariants ? (
+                <button
+                  type="button"
+                  onClick={onToggleExpand}
+                  className="p-1 -ml-1 text-slate-400 hover:text-[#546b5a] rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                  title={isExpanded ? "Collapse Variants" : `Expand ${variants.length} Variants`}
+                >
+                  {isExpanded ? (
+                    <ChevronDown size={14} className="text-[#546b5a] font-bold" />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )}
+                </button>
+              ) : (
+                <span className="w-4" />
+              )}
+              <span 
+                onClick={hasVariants ? onToggleExpand : undefined}
+                className={`font-semibold text-slate-700 ${hasVariants ? 'cursor-pointer hover:text-[#546b5a]' : ''}`}
+              >
+                {skuId}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <p className="text-[8px] text-[#8b968c] font-black uppercase tracking-tighter">REF: #{p._id?.slice(-6).toUpperCase()}</p>
+          </td>
+        )}
+
+        {/* Product Name & Thumbnail + Variant Count Indicator */}
+        {visibleColumns.has('name') && (
+          <td className="ecom-td">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 p-0.5 overflow-hidden">
+                <img 
+                  src={p.images?.[0] || 'https://res.cloudinary.com/dwkom79iv/image/upload/v1715096530/akod-food/placeholder.png'} 
+                  className="w-full h-full object-contain" 
+                  alt={p.name}
+                />
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Link 
+                  href={`/products/edit/${p._id}`}
+                  className="font-bold text-slate-900 hover:text-[#546b5a] transition-colors truncate max-w-[180px]"
+                >
+                  {p.name}
+                </Link>
+                {hasVariants && (
+                  <button
+                    type="button"
+                    onClick={onToggleExpand}
+                    className="inline-flex items-center gap-1 text-[10px] text-[#546b5a] bg-[#eff4f0] hover:bg-[#dfebe2] border border-[#b3ccb9] px-1.5 py-0.5 rounded font-bold shrink-0 transition-colors cursor-pointer"
+                    title="Toggle hierarchical variant view"
+                  >
+                    <Layers size={10} />
+                    <span>{variants.length} Var</span>
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      </td>
-      <td className="px-6 py-3 text-left">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-black text-[#4a554b] uppercase italic truncate max-w-[120px]">{p.category?.name || 'Unclassified'}</span>
-          <span className="text-[8px] text-[#e7ab79] font-black uppercase tracking-widest flex items-center gap-1">
-            <MapPin size={8} /> {p.origin || 'INDIAN'}
-          </span>
-        </div>
-      </td>
-      <td className="px-6 py-3 text-center">
-        <div className="relative inline-block w-full max-w-[140px]">
-          <select 
-            className="w-full bg-[#fcfcfb] border border-[#f1f1ee] rounded-full px-5 py-2 text-[9px] font-black text-[#5f7161] outline-none appearance-none cursor-pointer hover:border-[#5f7161]/30 transition-all shadow-sm"
-            value={selectedVariantIdx}
-            onChange={(e) => setSelectedVariantIdx(Number(e.target.value))}
-          >
-            {p.variants?.map((variant: any, idx: number) => (
-              <option key={idx} value={idx}>{variant.name}{variant.unit}</option>
-            )) || <option>Base Architecture</option>}
-          </select>
-          <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5f7161] pointer-events-none" />
-        </div>
-      </td>
-      <td className="px-6 py-3 text-center">
-        <div className="flex flex-col">
-          <span className="text-[11px] font-black text-[#5f7161]">₹{v.sellingPrice?.toLocaleString() || '0'}</span>
-          <span className="text-[7px] font-black text-[#adb5bd] uppercase tracking-widest">Active Price</span>
-        </div>
-      </td>
-      <td className="px-6 py-3 text-center">
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest transition-all ${
-          Number(v.stock) === 0 ? 'bg-red-50 text-red-500 border-red-100' : 
-          Number(v.stock) < 10 ? 'bg-amber-50 text-amber-600 border-amber-100' : 
-          'bg-green-50 text-green-600 border-green-100'
-        }`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${
-            Number(v.stock) === 0 ? 'bg-red-500' : Number(v.stock) < 10 ? 'bg-amber-500' : 'bg-green-500 animate-pulse'
-          }`} />
-          {v.stock || 0} PCS
-        </div>
-      </td>
-      <td className="px-6 py-3 text-right">
-        <div className="flex justify-end gap-1.5">
-          <Link href={`/products/edit/${p._id}`} className="p-2 text-[#adb5bd] hover:text-[#5f7161] hover:bg-[#5f7161]/5 rounded-full transition-all active:scale-90"><Edit2 size={14} /></Link>
-          <button 
-            onClick={() => {
-              toast.custom((t) => (
-                <div className="bg-white/90 backdrop-blur-md border-l-4 border-red-500 shadow-2xl rounded-sm p-4 w-[380px] animate-in slide-in-from-right-8 duration-300">
-                  <div className="flex flex-col gap-3">
-                    <div className="space-y-0.5">
-                      <h3 className="text-[10px] font-black text-[#4a554b] uppercase tracking-widest">Purge Product?</h3>
-                      <p className="text-[10px] text-[#8b968c] font-bold leading-tight">Are you sure you want to delete <span className="text-[#5f7161]">{p.name}</span>?</p>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => toast.dismiss(t)} className="px-4 py-1.5 bg-[#f1f1ee] text-[#4a554b] text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-[#e8e8e5]">CANCEL</button>
-                      <button onClick={() => { handleDelete(p._id, p.name); toast.dismiss(t); }} className="px-4 py-1.5 bg-red-500 text-white text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 shadow-lg shadow-red-500/20">PURGE</button>
-                    </div>
-                  </div>
-                </div>
-              ), { duration: 8000, position: 'top-right' });
-            }}
-            className="p-2 text-[#adb5bd] hover:text-red-500 hover:bg-red-50/50 rounded-full transition-all active:scale-90"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-};
+          </td>
+        )}
 
-const ProductCard = ({ p, handleDelete }: any) => {
-  const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
-  const v = p.variants?.[selectedVariantIdx] || { name: 'Standard', unit: '', sellingPrice: p.price || 0, stock: p.stock || 0 };
+        {/* Category */}
+        {visibleColumns.has('category') && (
+          <td className="ecom-td text-slate-700 font-medium">
+            {p.category?.name || 'General Snacks'}
+          </td>
+        )}
 
-  return (
-    <div className="group relative bg-white border border-[#f1f1ee] rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 flex flex-col">
-      {/* Floating Action Cluster */}
-      <div className="absolute top-3 right-3 z-10 flex gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-        <Link href={`/products/edit/${p._id}`} className="p-2 bg-white/90 backdrop-blur-md text-[#5f7161] rounded-full shadow-lg hover:bg-[#5f7161] hover:text-white transition-all">
-          <Edit2 size={14} />
-        </Link>
-        <button 
-          onClick={() => handleDelete(p._id, p.name)}
-          className="p-2 bg-white/90 backdrop-blur-md text-red-500 rounded-full shadow-lg hover:bg-red-500 hover:text-white transition-all"
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
+        {/* Flavor Profile */}
+        {visibleColumns.has('flavor') && (
+          <td className="ecom-td text-slate-600 font-medium">
+            {p.flavor || 'Traditional'}
+          </td>
+        )}
 
-      <div className="aspect-square relative overflow-hidden bg-[#fcfcfb] flex items-center justify-center p-6">
-        <img src={p.images?.[0] || 'https://res.cloudinary.com/dwkom79iv/image/upload/v1715096530/akod-food/placeholder.png'} className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        
-        <div className="absolute bottom-3 left-3 flex flex-col gap-1.5">
-          <div className={`px-3 py-1 rounded-full text-[7px] font-black uppercase tracking-widest text-white shadow-lg ${
-            Number(v.stock) === 0 ? 'bg-red-500' : 'bg-[#5f7161]'
-          }`}>
-            {Number(v.stock) === 0 ? 'Depleted' : 'Operational'}
-          </div>
-          <div className={`px-3 py-1 rounded-full text-[7px] font-black uppercase tracking-widest text-white shadow-lg ${
-            p.status === 'Inactive' ? 'bg-red-400' : 'bg-[#e7ab79]'
-          }`}>
-            {p.status || 'Active'}
-          </div>
-        </div>
-      </div>
-
-      <div className="p-5 flex flex-col flex-1 space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-[9px] text-[#8b968c] font-black uppercase tracking-widest">{p.category?.name || 'Unclassified'}</p>
-          <div className="flex items-center gap-2">
-            {p.dietaryType && (
-              <span className={`w-1.5 h-1.5 rounded-full ${p.dietaryType === 'Veg' ? 'bg-green-500' : 'bg-red-500'}`} />
-            )}
-            <p className="text-[9px] text-[#e7ab79] font-black uppercase tracking-tighter italic">{p.origin || 'INDIAN'}</p>
-          </div>
-        </div>
-        
-        <h3 className="font-black text-sm text-[#4a554b] group-hover:text-[#5f7161] transition-colors uppercase italic truncate">{p.name}</h3>
-        
-        <div className="flex items-end justify-between pt-4 border-t border-gray-100 mt-auto">
-          <div className="flex flex-col gap-2">
-            <div className="relative inline-block">
-              <select 
-                className="bg-[#fcfcfb] border border-[#f1f1ee] rounded-full px-4 py-1 text-[9px] font-black text-[#5f7161] outline-none appearance-none cursor-pointer hover:border-[#5f7161]/30 transition-all shadow-sm"
-                value={selectedVariantIdx}
-                onChange={(e) => setSelectedVariantIdx(Number(e.target.value))}
+        {/* Variant / Hierarchy Summary */}
+        {visibleColumns.has('variant') && (
+          <td className="ecom-td">
+            {hasVariants ? (
+              <button
+                type="button"
+                onClick={onToggleExpand}
+                className="text-left text-xs font-semibold text-[#546b5a] hover:text-[#415446] hover:underline flex items-center gap-1 cursor-pointer"
               >
-                {p.variants?.map((variant: any, idx: number) => (
-                  <option key={idx} value={idx}>{variant.name}{variant.unit}</option>
-                )) || <option>Standard</option>}
-              </select>
-              <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5f7161] pointer-events-none" />
+                <span>{variants.length} SKU Sizes</span>
+                <ChevronDown size={11} className={`transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`} />
+              </button>
+            ) : (
+              <span className="text-slate-500 font-normal text-xs">Standard</span>
+            )}
+          </td>
+        )}
+
+        {/* Price / Price Range */}
+        {visibleColumns.has('price') && (
+          <td className="ecom-td font-semibold text-slate-900 text-xs">
+            {priceDisplay}
+          </td>
+        )}
+
+        {/* Stock Level Summary */}
+        {visibleColumns.has('stock') && (
+          <td className="ecom-td">
+            <span className={`badge-status ${
+              isOutOfStock ? 'badge-status-rose' :
+              isLowStock ? 'badge-status-amber' :
+              'badge-status-green'
+            }`}>
+              {isOutOfStock ? 'OUT OF STOCK' : isLowStock ? `LOW (${totalStock})` : `${totalStock} UNITS`}
+            </span>
+          </td>
+        )}
+
+        {/* Status Badge */}
+        {visibleColumns.has('status') && (
+          <td className="ecom-td text-center">
+            <span className={`badge-status ${
+              p.status === 'Inactive' 
+                ? 'badge-status-purple' 
+                : 'badge-status-teal'
+            }`}>
+              {p.status === 'Inactive' ? 'INACTIVE' : 'ACTIVE'}
+            </span>
+          </td>
+        )}
+
+        {/* Action Icons in a row: [Edit] [Trash] */}
+        {visibleColumns.has('actions') && (
+          <td className="ecom-td text-center">
+            <div className="flex items-center justify-center gap-1.5">
+              <Link 
+                href={`/products/edit/${p._id}`}
+                title="Edit Product"
+                className="action-btn text-slate-400 hover:text-[#546b5a]"
+              >
+                <Edit2 size={13} />
+              </Link>
+              <button 
+                onClick={() => handleDelete(p._id, p.name)}
+                title="Delete SKU"
+                className="action-btn action-btn-danger text-slate-400"
+              >
+                <Trash2 size={13} />
+              </button>
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black text-[#5f7161]">₹{v.sellingPrice?.toLocaleString() || '0'}</span>
-              <span className="text-[7px] font-black text-[#adb5bd] uppercase tracking-widest">Price</span>
-            </div>
-          </div>
-          <div className="flex flex-col items-end">
-            <span className={`text-[10px] font-black ${Number(v.stock) === 0 ? 'text-red-500' : 'text-[#4a554b]'}`}>{v.stock || 0} PCS</span>
-            <span className="text-[7px] font-black text-[#adb5bd] uppercase tracking-widest">Reserve</span>
-          </div>
-        </div>
-      </div>
-    </div>
+          </td>
+        )}
+      </tr>
+
+      {/* Hierarchical Child Variant Sub-Rows */}
+      {isExpanded && hasVariants && variants.map((v: any, idx: number) => {
+        const vStock = Number(v.stock) || 0;
+        const vIsOutOfStock = vStock <= 0;
+        const vIsLowStock = vStock > 0 && vStock < (v.minStockAlert || 10);
+        const variantSku = v.sku || `${skuId}-${String(v.name).toUpperCase().replace(/\s+/g, '')}${v.unit || 'G'}`;
+
+        return (
+          <tr key={idx} className="ecom-tr bg-slate-50/70 hover:bg-[#eff4f0]/50 transition-colors">
+            {/* Indented Variant SKU ID with Tree Branch Connector */}
+            {visibleColumns.has('skuId') && (
+              <td className="ecom-td">
+                <div className="flex items-center gap-2 pl-4 font-mono text-[11px] text-slate-600">
+                  <CornerDownRight size={12} className="text-[#546b5a] shrink-0" />
+                  <span className="font-medium text-slate-600 truncate max-w-[130px]" title={variantSku}>
+                    {variantSku}
+                  </span>
+                </div>
+              </td>
+            )}
+
+            {/* Variant Package Title */}
+            {visibleColumns.has('name') && (
+              <td className="ecom-td">
+                <div className="flex items-center gap-2 pl-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#546b5a] shrink-0" />
+                  <span className="font-medium text-slate-800 text-xs">
+                    {p.name} <span className="text-slate-500 font-normal">({v.name}{v.unit || 'g'} pack)</span>
+                  </span>
+                </div>
+              </td>
+            )}
+
+            {/* Category — inherited */}
+            {visibleColumns.has('category') && (
+              <td className="ecom-td text-slate-400 text-xs font-normal">
+                —
+              </td>
+            )}
+
+            {/* Flavor — inherited */}
+            {visibleColumns.has('flavor') && (
+              <td className="ecom-td text-slate-400 text-xs font-normal">
+                —
+              </td>
+            )}
+
+            {/* Specific Variant Tag / Weight */}
+            {visibleColumns.has('variant') && (
+              <td className="ecom-td">
+                <span className="bg-white border border-slate-200 text-slate-800 font-semibold px-2 py-0.5 rounded text-[11px] shadow-2xs">
+                  {v.name}{v.unit || 'g'}
+                </span>
+              </td>
+            )}
+
+            {/* Specific Variant Price */}
+            {visibleColumns.has('price') && (
+              <td className="ecom-td">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-900 text-xs">
+                    ₹{Number(v.sellingPrice || 0).toLocaleString('en-IN')}
+                  </span>
+                  {v.offerPrice && Number(v.offerPrice) > 0 && Number(v.offerPrice) < Number(v.sellingPrice) && (
+                    <span className="text-[10px] text-emerald-600 font-semibold">
+                      (₹{v.offerPrice} offer)
+                    </span>
+                  )}
+                </div>
+              </td>
+            )}
+
+            {/* Specific Variant Stock */}
+            {visibleColumns.has('stock') && (
+              <td className="ecom-td">
+                <span className={`badge-status ${
+                  vIsOutOfStock ? 'badge-status-rose' :
+                  vIsLowStock ? 'badge-status-amber' :
+                  'badge-status-green'
+                }`}>
+                  {vIsOutOfStock ? 'OUT OF STOCK' : vIsLowStock ? `LOW (${vStock})` : `${vStock} UNITS`}
+                </span>
+              </td>
+            )}
+
+            {/* Status */}
+            {visibleColumns.has('status') && (
+              <td className="ecom-td text-center">
+                <span className="badge-status badge-status-teal text-[9.5px]">
+                  ACTIVE
+                </span>
+              </td>
+            )}
+
+            {/* Variant Action */}
+            {visibleColumns.has('actions') && (
+              <td className="ecom-td text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <Link 
+                    href={`/products/edit/${p._id}`}
+                    title="Edit Variant Details"
+                    className="action-btn text-slate-400 hover:text-[#4f46e5]"
+                  >
+                    <Edit2 size={12} />
+                  </Link>
+                </div>
+              </td>
+            )}
+          </tr>
+        );
+      })}
+    </>
   );
 };
 
-const Products = () => {
+export default function Products() {
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [itemsPerPage, setItemsPerPage] = useState(12);
-  const [showFilters, setShowFilters] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortField, setSortField] = useState('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
+  // Track expanded product IDs for hierarchical tree view
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+    () => new Set(ALL_PRODUCT_COLUMNS.map(c => c.key))
+  );
+
+  const toggleColumn = (key: string) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size > 1) {
+          next.delete(key);
+        } else {
+          toast.info("At least one column must remain visible");
+        }
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const selectAllColumns = () => {
+    if (visibleColumns.size === ALL_PRODUCT_COLUMNS.length) {
+      // Default to core essential columns
+      setVisibleColumns(new Set(['skuId', 'name', 'price', 'stock', 'status', 'actions']));
+    } else {
+      setVisibleColumns(new Set(ALL_PRODUCT_COLUMNS.map(c => c.key)));
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -215,12 +391,12 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [searchTerm, categoryFilter, currentPage, itemsPerPage, sortField, sortOrder]);
+  }, [searchTerm, statusFilter, categoryFilter, currentPage, itemsPerPage, sortField, sortOrder]);
 
   const fetchCategories = async () => {
     try {
       const res = await adminApi.getCategories();
-      setCategories(res.data.data || []);
+      setCategories(res.data?.data || []);
     } catch (error: any) {
       console.error(error);
     }
@@ -231,204 +407,199 @@ const Products = () => {
     try {
       const res = await adminApi.getProducts({
         search: searchTerm,
-        category: categoryFilter,
+        status: statusFilter !== 'All' ? statusFilter : undefined,
+        category: categoryFilter !== 'All' ? categoryFilter : undefined,
         page: currentPage,
         limit: itemsPerPage,
         sort: sortField,
         order: sortOrder
       });
-      setProducts(res.data.data || []);
-      setTotalPages(res.data.pages || 1);
-      setTotalItems(res.data.total || 0);
+      setProducts(res.data?.data || []);
+      setTotalPages(res.data?.pages || 1);
+      setTotalItems(res.data?.total || 0);
     } catch (error: any) {
       console.error(error);
-      toast.error('Failed to load resource ledger');
+      toast.error('Failed to load products catalog');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
+  const handleExport = () => {
+    try {
+      const headers = ["SKU ID", "Name", "Category", "Flavor", "Price", "Stock", "Status"];
+      const rows = products.map(p => [
+        `SKU-2026-${String(p._id).slice(-4).toUpperCase()}`,
+        `"${p.name || ''}"`,
+        `"${p.category?.name || 'General'}"`,
+        `"${p.flavor || ''}"`,
+        p.variants?.[0]?.sellingPrice || p.price || 0,
+        p.variants?.[0]?.stock || p.stock || 0,
+        p.status || 'Active'
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `products_catalog_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Products catalog exported to CSV");
+    } catch (e) {
+      toast.error("Export failed");
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
     try {
       await adminApi.deleteProduct(id);
-      toast.success('PRODUCT NODE PURGED', {
-        description: `Resource [${name}] has been permanently decommissioned.`,
-        duration: 4000,
-      });
+      toast.success(`Product "${name}" deleted`);
       fetchProducts();
     } catch (error) {
-      toast.error('PURGE FAILED', {
-        description: 'The product node could not be decommissioned.',
-      });
+      toast.error('Failed to delete product');
     }
   };
 
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const toggleExpandAll = () => {
+    const allExpanded = products.every(p => expandedIds[p._id]);
+    const nextState: Record<string, boolean> = {};
+    products.forEach(p => {
+      nextState[p._id] = !allExpanded;
+    });
+    setExpandedIds(nextState);
+  };
+
+  const statusOptions = [
+    { label: 'All Status', value: 'All' },
+    { label: 'Active', value: 'Active' },
+    { label: 'Inactive', value: 'Inactive' }
+  ];
+
+  const categoryOptions = [
+    { label: 'All Categories', value: 'All' },
+    ...categories.map(c => ({ label: c.name, value: c._id }))
+  ];
+
+  const isAllExpanded = products.length > 0 && products.every(p => expandedIds[p._id]);
+
   return (
     <AdminWorkspace>
+      {/* Enterprise Header */}
       <AdminHeader 
-        title="Product"
-        secondTitle="Ledger"
-        subtitle="Operational Resource Management Cluster"
-        actionLabel="Add Product"
+        icon={Package2}
+        title="Product Inventory & Catalog Register"
+        subtitle="Live catalog management, SKU variant hierarchy, stock tracking & pricing"
+        actionLabel="New Entry"
         actionHref="/products/add"
         actionIcon={Plus}
-      >
-        <div className="flex items-center bg-white/80 backdrop-blur-sm border border-white rounded-full p-1 shadow-sm">
-          <button 
-            onClick={() => setViewMode('list')}
-            className={`p-2 rounded-full transition-all ${viewMode === 'list' ? 'bg-[#5f7161] text-white shadow-lg' : 'text-[#8b968c] hover:text-[#5f7161]'}`}
-          >
-            <List size={16} />
-          </button>
-          <button 
-            onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-full transition-all ${viewMode === 'grid' ? 'bg-[#5f7161] text-white shadow-lg' : 'text-[#8b968c] hover:text-[#5f7161]'}`}
-          >
-            <LayoutGrid size={16} />
-          </button>
-        </div>
-      </AdminHeader>
-
-      <AdminStats stats={[
-        { label: 'Inventory', value: totalItems, icon: Package2, color: 'bg-[#5f7161]' },
-        { label: 'Revenue Pool', value: `₹${(products.reduce((acc, p) => acc + (p.variants?.reduce((vAcc: number, v: any) => vAcc + (Number(v.sellingPrice || 0) * Number(v.stock || 0)), 0) || 0), 0)).toLocaleString()}`, icon: Scale, color: 'bg-[#8ba190]' },
-        { label: 'Avg Rating', value: '5.0', icon: Star, color: 'bg-[#d49a68]' },
-        { label: 'Depleted', value: products.filter(p => p.stock === 0).length, icon: Activity, color: 'bg-[#4a554b]' },
-      ]} />
-
-      <AdminSearch 
-        searchTerm={searchTerm}
-        onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        placeholder="Scan SKU or Name..."
+        onExport={handleExport}
       />
 
-      {showFilters && (
-        <div className="bg-white/60 backdrop-blur-md border border-white rounded-xl p-8 shadow-2xl space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="flex items-center gap-2 pb-2 border-b border-[#f1f1ee]">
-            <ListFilter size={14} className="text-[#5f7161]" />
-            <h2 className="text-[11px] font-black text-[#4a554b] uppercase tracking-[0.2em]">Resource Intelligence Matrix</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-[#8b968c] uppercase tracking-widest pl-1">Classification</label>
-              <div className="bg-white/50 border border-white rounded-full px-5 py-2.5 flex items-center gap-3 group focus-within:border-[#5f7161] focus-within:bg-white transition-all relative shadow-sm">
-                <Layers size={14} className="text-[#adb5bd]" />
-                <select 
-                  className="w-full bg-transparent text-[10px] font-bold outline-none appearance-none cursor-pointer"
-                  value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
-                >
-                  <option value="All">All Classifications</option>
-                  {categories.map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-[#8b968c] uppercase tracking-widest pl-1">Inventory Status</label>
-              <div className="bg-white/50 border border-white rounded-full px-5 py-2.5 flex items-center gap-3 group focus-within:border-[#5f7161] focus-within:bg-white transition-all shadow-sm">
-                <Activity size={14} className="text-[#adb5bd]" />
-                <select className="w-full bg-transparent text-[10px] font-bold outline-none appearance-none cursor-pointer">
-                  <option>All Status Nodes</option>
-                  <option>In Stock</option>
-                  <option>Low Reserve</option>
-                  <option>Depleted</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-[#8b968c] uppercase tracking-widest pl-1">Valuation Range</label>
-              <div className="bg-white/50 border border-white rounded-full px-5 py-2.5 flex items-center gap-3 group focus-within:border-[#5f7161] focus-within:bg-white transition-all shadow-sm">
-                <Scale size={14} className="text-[#adb5bd]" />
-                <select className="w-full bg-transparent text-[10px] font-bold outline-none appearance-none cursor-pointer">
-                  <option>All Price Tiers</option>
-                  <option>Budget (₹0 - ₹500)</option>
-                  <option>Standard (₹500 - ₹2000)</option>
-                  <option>Premium (₹2000+)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* COMPACT SINGLE-VALUE GRID TABLE WITH 1PX BORDERS */}
       <AdminTable>
-        <div className="w-full">
-          {loading ? (
-            <div className="py-20 flex items-center justify-center"><LogoLoader /></div>
-          ) : viewMode === 'list' ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#5f7161] text-white">
-                    <th onClick={() => handleSort('name')} className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-left cursor-pointer group/h">
-                      <div className="flex items-center gap-2">
-                        Resource
-                        <span className={`transition-all ${sortField === 'name' ? 'opacity-100' : 'opacity-0 group-hover/h:opacity-50'}`}>
-                          {sortField === 'name' && sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                        </span>
-                      </div>
-                    </th>
-                    <th className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-left">Archetype</th>
-                    <th className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-center">Configurations</th>
-                    <th onClick={() => handleSort('price')} className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-center cursor-pointer group/h">
-                      <div className="flex items-center justify-center gap-2">
-                        Valuation
-                        <span className={`transition-all ${sortField === 'price' ? 'opacity-100' : 'opacity-0 group-hover/h:opacity-50'}`}>
-                          {sortField === 'price' && sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                        </span>
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('stock')} className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-center cursor-pointer group/h">
-                      <div className="flex items-center justify-center gap-2">
-                        Reserve
-                        <span className={`transition-all ${sortField === 'stock' ? 'opacity-100' : 'opacity-0 group-hover/h:opacity-50'}`}>
-                          {sortField === 'stock' && sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                        </span>
-                      </div>
-                    </th>
-                    <th className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100/50">
-                  {products.length > 0 ? products.map((p) => (
-                    <ProductRow key={p._id} p={p} handleDelete={handleDelete} />
-                  )) : <tr><td colSpan={10} className="py-20 text-center text-[12px] font-black uppercase text-[#8b968c] tracking-[0.4em]">Resource Ledger Empty</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 p-6">
-              {products.map((p) => (
-                <ProductCard key={p._id} p={p} handleDelete={handleDelete} />
-              ))}
-            </div>
-          )}
+        {/* Reusable Filter Bar */}
+        <AdminSearch 
+          searchTerm={searchTerm}
+          onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
+          statusFilter={statusFilter}
+          onStatusChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
+          statusOptions={statusOptions}
+          categoryFilter={categoryFilter}
+          onCategoryChange={(val) => { setCategoryFilter(val); setCurrentPage(1); }}
+          categoryOptions={categoryOptions}
+          placeholder="Search product, SKU ID, flavor, category..."
+          totalCount={totalItems}
+          columns={ALL_PRODUCT_COLUMNS}
+          visibleColumnKeys={visibleColumns}
+          onToggleColumn={toggleColumn}
+          onSelectAllColumns={selectAllColumns}
+        >
+          {/* Hierarchy Expand/Collapse All Toggle */}
+          <button
+            type="button"
+            onClick={toggleExpandAll}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-normal text-slate-600 bg-white hover:bg-slate-50 cursor-pointer select-none border-l border-[#e5e7eb] transition-colors"
+            title="Toggle Expand All Variants"
+          >
+            <ChevronsUpDown size={13} className="text-slate-400" />
+            <span>{isAllExpanded ? 'Collapse All' : 'Expand All'}</span>
+          </button>
+        </AdminSearch>
+
+        {/* Data Table */}
+        <div className="w-full border-t border-[#e5e7eb] overflow-x-auto relative">
+          <table className="ecom-table">
+            <thead className="ecom-thead">
+              <tr>
+                {visibleColumns.has('skuId') && <th className="ecom-th">TRANSACTION ID</th>}
+                {visibleColumns.has('name') && <th className="ecom-th">PRODUCT NAME</th>}
+                {visibleColumns.has('category') && <th className="ecom-th">CATEGORY</th>}
+                {visibleColumns.has('flavor') && <th className="ecom-th">FLAVOR PROFILE</th>}
+                {visibleColumns.has('variant') && <th className="ecom-th">VARIANT / SIZE</th>}
+                {visibleColumns.has('price') && <th className="ecom-th">PRICE</th>}
+                {visibleColumns.has('stock') && <th className="ecom-th">STOCK LEVEL</th>}
+                {visibleColumns.has('status') && <th className="ecom-th text-center">STATUS</th>}
+                {visibleColumns.has('actions') && <th className="ecom-th text-center">ACTIONS</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <TableSkeleton rows={8} cols={visibleColumns.size || 9} />
+              ) : products.length > 0 ? (
+                products.map((p) => (
+                  <ProductRow 
+                    key={p._id} 
+                    p={p} 
+                    handleDelete={handleDelete}
+                    isExpanded={!!expandedIds[p._id]}
+                    onToggleExpand={() => toggleExpand(p._id)}
+                    visibleColumns={visibleColumns}
+                  />
+                ))
+              ) : (
+                <TableEmptyState 
+                  colSpan={visibleColumns.size || 9}
+                  title="No products found"
+                  description={
+                    searchTerm || statusFilter !== 'ALL' || categoryFilter !== 'ALL'
+                      ? "No products match your current search or filter criteria. Try refining your keywords or resetting filters."
+                      : "No products in your catalog yet. Click below to add your first product."
+                  }
+                  hasFilters={Boolean(searchTerm || statusFilter !== 'ALL' || categoryFilter !== 'ALL')}
+                  onResetFilters={() => {
+                    setSearchTerm('');
+                    setStatusFilter('ALL');
+                    setCategoryFilter('ALL');
+                    setCurrentPage(1);
+                  }}
+                  actionLabel="Add New Product"
+                  actionHref="/products/add"
+                />
+              )}
+            </tbody>
+          </table>
         </div>
 
+        {/* Enterprise Pagination Stepper */}
         <AdminPagination 
           currentPage={currentPage}
           totalPages={totalPages}
           totalItems={totalItems}
           itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
-          label="resources"
+          onItemsPerPageChange={(limit) => { setItemsPerPage(limit); setCurrentPage(1); }}
+          label="products"
         />
       </AdminTable>
     </AdminWorkspace>
   );
-};
-
-export default Products;
+}
